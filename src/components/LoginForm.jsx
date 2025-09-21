@@ -1,0 +1,81 @@
+import React, { useState } from 'react';
+import { Form, Button, Alert } from 'react-bootstrap';
+import { useForm } from 'react-hook-form';
+import api from '../services/api';
+
+const LoginForm = ({ userType, onSuccess }) => {
+  const { register, handleSubmit, formState: { errors } } = useForm();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const onSubmit = async (data) => {
+    setLoading(true);
+    setError('');
+    
+    try {
+      const response = await api.post('/auth/login', {
+        ...data,
+        userType
+      });
+      
+      onSuccess(response.data);
+    } catch (error) {
+      setError(error.response?.data?.message || 'Login failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Form onSubmit={handleSubmit(onSubmit)}>
+      {error && <Alert variant="danger">{error}</Alert>}
+      
+      
+      <Form.Group className="mb-3">
+        <Form.Label>Email Address</Form.Label>
+        <Form.Control
+          type="email"
+          size="lg"
+          placeholder="Enter your email"
+          {...register('email', { 
+            required: 'Email is required',
+            pattern: {
+              value: /^\S+@\S+$/i,
+              message: 'Invalid email address'
+            }
+          })}
+          isInvalid={!!errors.email}
+        />
+        <Form.Control.Feedback type="invalid">
+          {errors.email?.message}
+        </Form.Control.Feedback>
+      </Form.Group>
+
+      <Form.Group className="mb-4">
+        <Form.Label>Password</Form.Label>
+        <Form.Control
+          type="password"
+          size="lg"
+          placeholder="Enter your password"
+          {...register('password', { required: 'Password is required' })}
+          isInvalid={!!errors.password}
+        />
+        <Form.Control.Feedback type="invalid">
+          {errors.password?.message}
+        </Form.Control.Feedback>
+      </Form.Group>
+
+      <Button 
+        variant="primary" 
+        type="submit" 
+        size="lg" 
+        className="w-100 py-3 fw-semibold"
+        disabled={loading}
+      >
+        {loading ? 'Signing In...' : `Sign In as ${userType === 'student' ? 'Student' : 'Organization'}`}
+      </Button>
+    </Form>
+  );
+};
+
+export default LoginForm;
