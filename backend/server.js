@@ -50,7 +50,7 @@ app.use('*', (req, res) => {
 // MongoDB connection
 const connectDB = async () => {
   try {
-    await mongoose.connect(process.env.MONGODB_URI || 'mongodb+srv://kavinraghul:1234@cluster0.ey4rcg7.mongodb.net/', {
+    await mongoose.connect(process.env.MONGODB_URI || 'mongodb+srv://kavinraghul888_db_user:1234@cluster0.edzyggw.mongodb.net/', {
       useNewUrlParser: true,
       useUnifiedTopology: true,
     });

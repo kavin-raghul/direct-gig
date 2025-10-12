@@ -63,12 +63,11 @@ const JobPostingForm = ({ show, onHide, onJobCreated }) => {
               isInvalid={!!errors.category}
             >
               <option value="">Select Category</option>
-              <option value="campus-events">Campus Events</option>
-              <option value="tutoring">Tutoring & Teaching</option>
-              <option value="research">Research Assistant</option>
-              <option value="content-creation">Content Creation</option>
+              <option value="Catering-service">Catering Service</option>
+              <option value="Weight-Lifting">Weight Lifting</option>
+              <option value="Security">Security</option>
+              <option value="Data-Entry">Data Entry</option>
               <option value="technical">Technical Support</option>
-              <option value="administrative">Administrative</option>
               <option value="other">Other</option>
             </Form.Select>
             <Form.Control.Feedback type="invalid">
@@ -155,7 +154,6 @@ const JobPostingForm = ({ show, onHide, onJobCreated }) => {
             <Form.Label>Required Skills (Optional)</Form.Label>
             <Form.Control
               type="text"
-              placeholder="e.g., JavaScript, Communication Skills, Event Management"
               {...register('skillsRequired')}
             />
             <Form.Text className="text-muted">

@@ -1,24 +1,39 @@
 import React, { useState } from 'react';
 import { Form, Button, Alert } from 'react-bootstrap';
 import { useForm } from 'react-hook-form';
+import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 
 const LoginForm = ({ userType, onSuccess }) => {
   const { register, handleSubmit, formState: { errors } } = useForm();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const navigate = useNavigate();   // 👈 import useNavigate
 
   const onSubmit = async (data) => {
+    localStorage.removeItem('token');
+  localStorage.removeItem('user');
     setLoading(true);
     setError('');
-    
+
     try {
-      const response = await api.post('/auth/login', {
-        ...data,
-        userType
-      });
-      
+      const response = await api.post('/auth/login', { ...data, userType });
+
+      // ✅ Save token & user
+      if (response.data.token) localStorage.setItem('token', response.data.token);
+      if (response.data.user) localStorage.setItem('user', JSON.stringify(response.data.user));
+
       onSuccess(response.data);
+
+      // ✅ Redirect here (same as signup)
+      if (response.data.user?.userType === 'student') {
+        navigate('/student-dashboard');
+      } else if (response.data.user?.userType === 'organization') {
+        navigate('/organization-dashboard');
+      } else {
+        navigate('/dashboard');
+      }
+
     } catch (error) {
       setError(error.response?.data?.message || 'Login failed');
     } finally {
@@ -29,8 +44,7 @@ const LoginForm = ({ userType, onSuccess }) => {
   return (
     <Form onSubmit={handleSubmit(onSubmit)}>
       {error && <Alert variant="danger">{error}</Alert>}
-      
-      
+
       <Form.Group className="mb-3">
         <Form.Label>Email Address</Form.Label>
         <Form.Control
@@ -39,16 +53,11 @@ const LoginForm = ({ userType, onSuccess }) => {
           placeholder="Enter your email"
           {...register('email', { 
             required: 'Email is required',
-            pattern: {
-              value: /^\S+@\S+$/i,
-              message: 'Invalid email address'
-            }
+            pattern: { value: /^\S+@\S+$/i, message: 'Invalid email address' }
           })}
           isInvalid={!!errors.email}
         />
-        <Form.Control.Feedback type="invalid">
-          {errors.email?.message}
-        </Form.Control.Feedback>
+        <Form.Control.Feedback type="invalid">{errors.email?.message}</Form.Control.Feedback>
       </Form.Group>
 
       <Form.Group className="mb-4">
@@ -60,9 +69,7 @@ const LoginForm = ({ userType, onSuccess }) => {
           {...register('password', { required: 'Password is required' })}
           isInvalid={!!errors.password}
         />
-        <Form.Control.Feedback type="invalid">
-          {errors.password?.message}
-        </Form.Control.Feedback>
+        <Form.Control.Feedback type="invalid">{errors.password?.message}</Form.Control.Feedback>
       </Form.Group>
 
       <Button 
