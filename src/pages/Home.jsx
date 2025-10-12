@@ -19,7 +19,7 @@ const Home = () => {
                 for gigs, internships, and part-time opportunities. No middlemen, just direct connections.
               </p>
               <div className="d-flex gap-3 justify-content-center flex-wrap">
-                <LinkContainer to="/student/auth">
+                <LinkContainer to="/login">
                   <Button variant="light" size="lg" className="px-5 py-3 fw-semibold">
                     <Users className="me-2" size={24} />
                     Join as Student
@@ -183,7 +183,7 @@ const Home = () => {
                   <p className="text-muted mb-0">No commission fees - keep every rupee you earn</p>
                 </div>
               </div>
-              <LinkContainer to="/student/auth">
+              <LinkContainer to="/login">
                 <Button variant="primary" size="lg">
                   Get Started as Student
                 </Button>
@@ -233,7 +233,7 @@ const Home = () => {
                 for commission-free job connections.
               </p>
               <div className="d-flex gap-3 justify-content-center flex-wrap">
-                <LinkContainer to="/student/auth">
+                <LinkContainer to="/login">
                   <Button variant="light" size="lg" className="px-5 py-3">
                     <Users className="me-2" size={20} />
                     Register as Student

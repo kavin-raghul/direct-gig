@@ -3,8 +3,10 @@ import { Container, Row, Col, Card, Button, Tab, Tabs, Alert, Modal, Badge } fro
 import { useAuth } from '../context/AuthContext';
 import JobCard from '../components/JobCard';
 import JobPostingForm from '../components/JobPostingForm';
+import ConversationsList from '../components/ConversationsList';
+import MessageModal from '../components/MessageModal';
 import api from '../services/api';
-import { Plus, Briefcase, FileText, Building, Users } from 'lucide-react';
+import { Plus, Briefcase, FileText, Building, Users, MessageCircle } from 'lucide-react';
 
 const OrganizationDashboard = () => {
   const { user } = useAuth();
@@ -13,7 +15,9 @@ const OrganizationDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [showJobForm, setShowJobForm] = useState(false);
   const [showApplicationsModal, setShowApplicationsModal] = useState(false);
+  const [showMessagesModal, setShowMessagesModal] = useState(false);
   const [selectedJob, setSelectedJob] = useState(null);
+  const [selectedConversation, setSelectedConversation] = useState(null);
   const [message, setMessage] = useState('');
 
   useEffect(() => {
@@ -61,6 +65,16 @@ const OrganizationDashboard = () => {
     } catch (error) {
       console.error('Error updating application status:', error);
     }
+  };
+
+  const handleSelectConversation = (conversation) => {
+    setSelectedConversation(conversation);
+    setShowMessagesModal(true);
+  };
+
+  const handleCloseMessages = () => {
+    setShowMessagesModal(false);
+    setSelectedConversation(null);
   };
 
   const getStatusColor = (status) => {
@@ -155,6 +169,19 @@ const OrganizationDashboard = () => {
                 </Col>
               ))
             )}
+          </Row>
+        </Tab>
+        
+        <Tab eventKey="messages" title={
+          <span className="d-flex align-items-center">
+            <MessageCircle className="me-2" size={16} />
+            Messages
+          </span>
+        }>
+          <Row>
+            <Col lg={8}>
+              <ConversationsList onSelectConversation={handleSelectConversation} />
+            </Col>
           </Row>
         </Tab>
       </Tabs>
@@ -258,6 +285,14 @@ const OrganizationDashboard = () => {
           )}
         </Modal.Body>
       </Modal>
+
+      {/* Messages Modal */}
+      <MessageModal
+        show={showMessagesModal}
+        onHide={handleCloseMessages}
+        application={selectedConversation?.application}
+        currentUser={user}
+      />
     </Container>
   );
 };

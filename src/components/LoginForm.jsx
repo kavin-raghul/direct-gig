@@ -11,31 +11,39 @@ const LoginForm = ({ userType, onSuccess }) => {
   const navigate = useNavigate();   // 👈 import useNavigate
 
   const onSubmit = async (data) => {
+    // Clear any existing tokens and errors
     localStorage.removeItem('token');
-  localStorage.removeItem('user');
+    localStorage.removeItem('user');
     setLoading(true);
     setError('');
 
     try {
       const response = await api.post('/auth/login', { ...data, userType });
 
-      // ✅ Save token & user
-      if (response.data.token) localStorage.setItem('token', response.data.token);
-      if (response.data.user) localStorage.setItem('user', JSON.stringify(response.data.user));
+      // Only proceed if login is successful
+      if (response.data && response.data.token && response.data.user) {
+        // Save token & user
+        localStorage.setItem('token', response.data.token);
+        localStorage.setItem('user', JSON.stringify(response.data.user));
 
-      onSuccess(response.data);
+        // Call success callback
+        onSuccess(response.data);
 
-      // ✅ Redirect here (same as signup)
-      if (response.data.user?.userType === 'student') {
-        navigate('/student-dashboard');
-      } else if (response.data.user?.userType === 'organization') {
-        navigate('/organization-dashboard');
+        // Redirect based on user type
+        if (response.data.user?.userType === 'student') {
+          navigate('/student-dashboard');
+        } else if (response.data.user?.userType === 'organization') {
+          navigate('/organization-dashboard');
+        } else {
+          navigate('/dashboard');
+        }
       } else {
-        navigate('/dashboard');
+        setError('Invalid response from server');
       }
 
     } catch (error) {
-      setError(error.response?.data?.message || 'Login failed');
+      console.error('Login error:', error);
+      setError(error.response?.data?.message || 'Login failed. Please check your credentials.');
     } finally {
       setLoading(false);
     }

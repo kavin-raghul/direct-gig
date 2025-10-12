@@ -14,15 +14,20 @@ const ApplicationModal = ({ show, onHide, job, onApplicationSuccess }) => {
     setError('');
     
     try {
-      await api.post('/applications', {
+      console.log('Submitting application for job:', job._id);
+      console.log('Cover letter length:', data.coverLetter.length);
+      
+      const response = await api.post('/applications', {
         jobId: job._id,
         coverLetter: data.coverLetter
       });
       
+      console.log('Application submitted successfully:', response.data);
       onApplicationSuccess();
       reset();
       onHide();
     } catch (error) {
+      console.error('Application submission error:', error);
       setError(error.response?.data?.message || 'Application failed');
     } finally {
       setLoading(false);
@@ -30,6 +35,7 @@ const ApplicationModal = ({ show, onHide, job, onApplicationSuccess }) => {
   };
 
   const formatCategory = (category) => {
+    if (!category) return 'General';
     return category.split('-').map(word => 
       word.charAt(0).toUpperCase() + word.slice(1)
     ).join(' ');
@@ -46,7 +52,7 @@ const ApplicationModal = ({ show, onHide, job, onApplicationSuccess }) => {
             <h5 className="mb-3 text-primary">{job.title}</h5>
             <div className="mb-3">
               <Badge bg="info" className="me-2">{formatCategory(job.category)}</Badge>
-              <Badge bg="success">₹{job.stipend}</Badge>
+              <Badge bg="success">₹{job.amount}</Badge>
             </div>
             <div className="row text-muted">
               <div className="col-md-6 mb-2">

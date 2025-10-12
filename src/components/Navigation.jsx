@@ -37,16 +37,16 @@ const Navigation = () => {
           <Nav>
             {!isAuthenticated ? (
               <>
-                <LinkContainer to="/student/auth">
+                <LinkContainer to="/login">
                   <Nav.Link className="me-2">
                     <Users size={16} className="me-1" />
-                    Student Portal
+                    Student Login
                   </Nav.Link>
                 </LinkContainer>
                 <LinkContainer to="/organization/auth">
                   <Button variant="outline-primary" size="sm">
                     <Building size={16} className="me-1" />
-                    Organization Portal
+                    Organization Login
                   </Button>
                 </LinkContainer>
               </>

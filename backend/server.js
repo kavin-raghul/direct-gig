@@ -5,6 +5,7 @@ import dotenv from 'dotenv';
 import authRoutes from './routes/auth.js';
 import jobRoutes from './routes/jobs.js';
 import applicationRoutes from './routes/applications.js';
+import messageRoutes from './routes/messages.js';
 
 dotenv.config();
 
@@ -23,6 +24,7 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use('/api/auth', authRoutes);
 app.use('/api/jobs', jobRoutes);
 app.use('/api/applications', applicationRoutes);
+app.use('/api/messages', messageRoutes);
 
 // Health check
 app.get('/', (req, res) => {
@@ -50,7 +52,7 @@ app.use('*', (req, res) => {
 // MongoDB connection
 const connectDB = async () => {
   try {
-    await mongoose.connect(process.env.MONGODB_URI || 'mongodb+srv://kavinraghul888_db_user:1234@cluster0.edzyggw.mongodb.net/', {
+    await mongoose.connect(process.env.MONGODB_URI || 'mongodb+srv://kavinraghul:1234@gig.gcifmbl.mongodb.net/', {
       useNewUrlParser: true,
       useUnifiedTopology: true,
     });

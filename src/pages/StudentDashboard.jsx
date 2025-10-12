@@ -3,8 +3,10 @@ import { Container, Row, Col, Card, Button, Badge, Tab, Tabs, Alert, Form, Input
 import { useAuth } from '../context/AuthContext';
 import JobCard from '../components/JobCard';
 import ApplicationModal from '../components/ApplicationModal';
+import ConversationsList from '../components/ConversationsList';
+import MessageModal from '../components/MessageModal';
 import api from '../services/api';
-import { Briefcase, FileText, User, Search, Filter } from 'lucide-react';
+import { Briefcase, FileText, User, Search, Filter, MessageCircle } from 'lucide-react';
 
 const StudentDashboard = () => {
   const { user } = useAuth();
@@ -13,7 +15,9 @@ const StudentDashboard = () => {
   const [applications, setApplications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showApplicationModal, setShowApplicationModal] = useState(false);
+  const [showMessagesModal, setShowMessagesModal] = useState(false);
   const [selectedJob, setSelectedJob] = useState(null);
+  const [selectedConversation, setSelectedConversation] = useState(null);
   const [message, setMessage] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [locationFilter, setLocationFilter] = useState('');
@@ -87,6 +91,16 @@ const StudentDashboard = () => {
     fetchApplications();
     fetchJobs();
     setTimeout(() => setMessage(''), 3000);
+  };
+
+  const handleSelectConversation = (conversation) => {
+    setSelectedConversation(conversation);
+    setShowMessagesModal(true);
+  };
+
+  const handleCloseMessages = () => {
+    setShowMessagesModal(false);
+    setSelectedConversation(null);
   };
 
   const getStatusColor = (status) => {
@@ -262,6 +276,19 @@ const StudentDashboard = () => {
             )}
           </Row>
         </Tab>
+        
+        <Tab eventKey="messages" title={
+          <span className="d-flex align-items-center">
+            <MessageCircle className="me-2" size={16} />
+            Messages
+          </span>
+        }>
+          <Row>
+            <Col lg={8}>
+              <ConversationsList onSelectConversation={handleSelectConversation} />
+            </Col>
+          </Row>
+        </Tab>
       </Tabs>
 
       <ApplicationModal
@@ -269,6 +296,14 @@ const StudentDashboard = () => {
         onHide={() => setShowApplicationModal(false)}
         job={selectedJob}
         onApplicationSuccess={handleApplicationSuccess}
+      />
+
+      {/* Messages Modal */}
+      <MessageModal
+        show={showMessagesModal}
+        onHide={handleCloseMessages}
+        application={selectedConversation?.application}
+        currentUser={user}
       />
     </Container>
   );

@@ -11,11 +11,12 @@ const jobSchema = new mongoose.Schema({
     type: String,
     required: true,
     trim: true,
+    minlength: 10,
     maxlength: 2000
   },
   category: {
     type: String,
-    required: true,
+    required: false,
     enum: ['campus-events', 'tutoring', 'research', 'content-creation', 'technical', 'administrative', 'other'],
     index: true
   },
@@ -24,15 +25,26 @@ const jobSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
-  stipend: {
+  amount: {
     type: Number,
     required: true,
-    min: 0
+    min: 100
   },
   skillsRequired: [{
     type: String,
     trim: true
   }],
+  eventDate: {
+    type: Date,
+    required: true,
+    index: true
+  },
+  workHours: {
+    type: Number,
+    required: true,
+    min: 1,
+    max: 24
+  },
   deadline: {
     type: Date,
     required: true,
