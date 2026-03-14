@@ -1,13 +1,22 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Modal, Form, Button, Alert, Badge } from 'react-bootstrap';
 import { useForm } from 'react-hook-form';
-import { MapPin, Calendar, DollarSign } from 'lucide-react';
+import { MapPin, Calendar, Clock } from 'lucide-react';
 import api from '../services/api';
 
 const ApplicationModal = ({ show, onHide, job, onApplicationSuccess }) => {
   const { register, handleSubmit, formState: { errors }, reset } = useForm();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  // Clear success message when modal opens
+  useEffect(() => {
+    if (show) {
+      setSuccess('');
+      setError('');
+    }
+  }, [show]);
 
   const onSubmit = async (data) => {
     setLoading(true);
@@ -24,8 +33,14 @@ const ApplicationModal = ({ show, onHide, job, onApplicationSuccess }) => {
       
       console.log('Application submitted successfully:', response.data);
       onApplicationSuccess();
+      setSuccess('Application submitted successfully!');
       reset();
-      onHide();
+      
+      // Auto-close after 2 seconds
+      setTimeout(() => {
+        onHide();
+        setSuccess('');
+      }, 2000);
     } catch (error) {
       console.error('Application submission error:', error);
       setError(error.response?.data?.message || 'Application failed');
@@ -34,12 +49,6 @@ const ApplicationModal = ({ show, onHide, job, onApplicationSuccess }) => {
     }
   };
 
-  const formatCategory = (category) => {
-    if (!category) return 'General';
-    return category.split('-').map(word => 
-      word.charAt(0).toUpperCase() + word.slice(1)
-    ).join(' ');
-  };
 
   return (
     <Modal show={show} onHide={onHide} size="lg">
@@ -51,7 +60,6 @@ const ApplicationModal = ({ show, onHide, job, onApplicationSuccess }) => {
           <div className="mb-4 p-4 bg-light rounded">
             <h5 className="mb-3 text-primary">{job.title}</h5>
             <div className="mb-3">
-              <Badge bg="info" className="me-2">{formatCategory(job.category)}</Badge>
               <Badge bg="success">₹{job.amount}</Badge>
             </div>
             <div className="row text-muted">
@@ -64,10 +72,23 @@ const ApplicationModal = ({ show, onHide, job, onApplicationSuccess }) => {
               <div className="col-md-6 mb-2">
                 <div className="d-flex align-items-center">
                   <Calendar size={16} className="me-2" />
+                  <span>Event Date: {new Date(job.eventDate || job.deadline).toLocaleDateString()}</span>
+                </div>
+              </div>
+              <div className="col-md-6 mb-2">
+                <div className="d-flex align-items-center">
+                  <Clock size={16} className="me-2" />
+                  <span>Working Hours: {job.workHours || 8} hours</span>
+                </div>
+              </div>
+              <div className="col-md-6 mb-2">
+                <div className="d-flex align-items-center">
+                  <Calendar size={16} className="me-2" />
                   <span>Deadline: {new Date(job.deadline).toLocaleDateString()}</span>
                 </div>
               </div>
             </div>
+            <p className="mb-2"><strong>Description:</strong> {job.description}</p>
             <p className="mb-2"><strong>Organization:</strong> {job.organization?.organizationName || job.organization?.name}</p>
             {job.skillsRequired?.length > 0 && (
               <div>
@@ -86,6 +107,7 @@ const ApplicationModal = ({ show, onHide, job, onApplicationSuccess }) => {
 
         <Form onSubmit={handleSubmit(onSubmit)}>
           {error && <Alert variant="danger">{error}</Alert>}
+          {success && <Alert variant="success">{success}</Alert>}
       
           <Form.Group className="mb-4">
             <Form.Label>Cover Letter *</Form.Label>
@@ -95,9 +117,12 @@ const ApplicationModal = ({ show, onHide, job, onApplicationSuccess }) => {
               placeholder="Tell the organization why you're perfect for this job. Include relevant experience, skills, and availability..."
               {...register('coverLetter', { 
                 required: 'Cover letter is required',
-                minLength: {
-                  value: 50,
-                  message: 'Cover letter must be at least 50 characters'
+                validate: value => {
+                  const words = value.trim().split(/\s+/).filter(word => word.length > 0);
+                  if (words.length < 5) {
+                    return 'Cover letter must be at least 5 words';
+                  }
+                  return true;
                 }
               })}
               isInvalid={!!errors.coverLetter}
@@ -106,7 +131,7 @@ const ApplicationModal = ({ show, onHide, job, onApplicationSuccess }) => {
               {errors.coverLetter?.message}
             </Form.Control.Feedback>
             <Form.Text className="text-muted">
-              Minimum 50 characters required. Be specific about your qualifications and interest.
+              Must be at least 5 words. Be specific about your qualifications and interest.
             </Form.Text>
           </Form.Group>
 
@@ -115,12 +140,12 @@ const ApplicationModal = ({ show, onHide, job, onApplicationSuccess }) => {
               Cancel
             </Button>
             <Button 
-              variant="primary" 
+              variant={success ? "success" : "primary"} 
               type="submit" 
               className="flex-fill py-2 fw-semibold"
-              disabled={loading}
+              disabled={loading || success}
             >
-              {loading ? 'Submitting...' : 'Submit Application'}
+              {loading ? 'Submitting...' : success ? 'Application Submitted!' : 'Submit Application'}
             </Button>
           </div>
         </Form>

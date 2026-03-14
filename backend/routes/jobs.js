@@ -8,7 +8,7 @@ const router = express.Router();
 // Get all active jobs (public route)
 router.get('/', async (req, res) => {
   try {
-    const { category, location, search } = req.query;
+    const { location, search } = req.query;
     
     let query = { 
       isActive: true,
@@ -16,10 +16,6 @@ router.get('/', async (req, res) => {
     };
 
     // Apply filters
-    if (category) {
-      query.category = category;
-    }
-    
     if (location) {
       query.location = { $regex: location, $options: 'i' };
     }
@@ -80,11 +76,12 @@ router.get('/:id', async (req, res) => {
 // Create new job
 router.post('/', authenticateToken, requireRole('organization'), [
   body('title').notEmpty().trim().isLength({ max: 200 }).withMessage('Title is required (max 200 characters)'),
-  body('description').notEmpty().trim().isLength({ min: 50, max: 2000 }).withMessage('Description must be 50-2000 characters'),
-  body('category').isIn(['campus-events', 'tutoring', 'research', 'content-creation', 'technical', 'administrative', 'other']).withMessage('Valid category is required'),
+  body('description').notEmpty().trim().withMessage('Description is required'),
   body('location').notEmpty().trim().withMessage('Location is required'),
-  body('stipend').isNumeric().isFloat({ min: 100 }).withMessage('Stipend must be at least ₹100'),
-  body('deadline').isISO8601().withMessage('Valid deadline date is required')
+  body('amount').isNumeric().isFloat({ min: 100 }).withMessage('Amount must be at least ₹100'),
+  body('deadline').isISO8601().withMessage('Valid deadline date is required'),
+  body('eventDate').isISO8601().withMessage('Valid event date is required'),
+  body('workHours').isInt({ min: 1, max: 24 }).withMessage('Work hours must be between 1-24')
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -95,19 +92,30 @@ router.post('/', authenticateToken, requireRole('organization'), [
       });
     }
 
-    const { deadline, ...jobData } = req.body;
+    const { deadline, eventDate, ...jobData } = req.body;
     
     // Validate deadline is in the future
     const deadlineDate = new Date(deadline);
+    const eventDateObj = new Date(eventDate);
+    
     if (deadlineDate <= new Date()) {
       return res.status(400).json({ message: 'Deadline must be in the future' });
+    }
+    
+    if (eventDateObj <= new Date()) {
+      return res.status(400).json({ message: 'Event date must be in the future' });
+    }
+    
+    if (deadlineDate >= eventDateObj) {
+      return res.status(400).json({ message: 'Deadline must be before event date' });
     }
 
     const job = new Job({
       ...jobData,
       deadline: deadlineDate,
+      eventDate: eventDateObj,
       organization: req.user._id,
-      stipend: parseFloat(jobData.stipend)
+      amount: parseFloat(jobData.amount)
     });
 
     await job.save();
@@ -128,9 +136,11 @@ router.post('/', authenticateToken, requireRole('organization'), [
 // Update job
 router.put('/:id', authenticateToken, requireRole('organization'), [
   body('title').optional().notEmpty().trim().isLength({ max: 200 }),
-  body('description').optional().notEmpty().trim().isLength({ min: 50, max: 2000 }),
-  body('stipend').optional().isNumeric().isFloat({ min: 100 }),
-  body('deadline').optional().isISO8601()
+  body('description').optional().notEmpty().trim(),
+  body('amount').optional().isNumeric().isFloat({ min: 100 }),
+  body('deadline').optional().isISO8601(),
+  body('eventDate').optional().isISO8601(),
+  body('workHours').optional().isInt({ min: 1, max: 24 })
 ], async (req, res) => {
   try {
     const errors = validationResult(req);

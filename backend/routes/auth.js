@@ -7,9 +7,10 @@ const router = express.Router();
 
 // Generate JWT token
 const generateToken = (userId) => {
+  const secret = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-this-in-production';
   return jwt.sign(
     { id: userId }, 
-    process.env.JWT_SECRET , 
+    secret, 
     { expiresIn: '7d' }
   );
 };
@@ -203,7 +204,7 @@ router.get('/profile', async (req, res) => {
       return res.status(401).json({ message: 'Access token required' });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-this-in-production');
     const user = await User.findById(decoded.id).select('-password');
     
     if (!user) {

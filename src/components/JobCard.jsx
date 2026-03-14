@@ -1,13 +1,8 @@
 import React from 'react';
-import { Card, Badge, Button, Row, Col } from 'react-bootstrap';
+import { Card, Badge, Button } from 'react-bootstrap';
 import { MapPin, Clock, DollarSign, Users, Calendar, CheckCircle } from 'lucide-react';
 
 const JobCard = ({ job, onApply, showApplyButton = true, onViewApplications, showManageButton = false, hasApplied = false }) => {
-  const formatCategory = (category) => {
-    return category.split('-').map(word => 
-      word.charAt(0).toUpperCase() + word.slice(1)
-    ).join(' ');
-  };
 
   const isDeadlinePassed = new Date(job.deadline) < new Date();
 
@@ -18,12 +13,9 @@ const JobCard = ({ job, onApply, showApplyButton = true, onViewApplications, sho
           <div className="flex-grow-1">
             <Card.Title className="h5 mb-2 text-primary">{job.title}</Card.Title>
             <div className="d-flex flex-wrap gap-2 mb-2">
-              <Badge bg="info" className="px-2 py-1">
-                {formatCategory(job.category)}
-              </Badge>
               <Badge bg="success" className="px-2 py-1">
                 <DollarSign size={12} className="me-1" />
-                ₹{job.stipend}
+                ₹{job.amount || job.stipend}
               </Badge>
               {hasApplied && (
                 <Badge bg="primary" className="px-2 py-1">
@@ -36,10 +28,7 @@ const JobCard = ({ job, onApply, showApplyButton = true, onViewApplications, sho
         </div>
 
         <Card.Text className="text-muted mb-3">
-          {job.description.length > 120 
-            ? `${job.description.substring(0, 120)}...` 
-            : job.description
-          }
+          {job.description}
         </Card.Text>
 
         <div className="mb-3">
@@ -49,6 +38,14 @@ const JobCard = ({ job, onApply, showApplyButton = true, onViewApplications, sho
           </div>
           <div className="d-flex align-items-center text-muted mb-2">
             <Calendar size={16} className="me-2 text-primary" />
+            <small>Event Date: {new Date(job.eventDate || job.deadline).toLocaleDateString()}</small>
+          </div>
+          <div className="d-flex align-items-center text-muted mb-2">
+            <Clock size={16} className="me-2 text-primary" />
+            <small>Working Hours: {job.workHours || 8} hours</small>
+          </div>
+          <div className="d-flex align-items-center text-muted mb-2">
+            <Calendar size={16} className="me-2 text-warning" />
             <small>Deadline: {new Date(job.deadline).toLocaleDateString()}</small>
           </div>
           {showManageButton && (

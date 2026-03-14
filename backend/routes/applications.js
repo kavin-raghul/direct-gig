@@ -9,7 +9,7 @@ const router = express.Router();
 // Apply for a job (students only)
 router.post('/', authenticateToken, requireRole('student'), [
   body('jobId').isMongoId().withMessage('Valid job ID is required'),
-  body('coverLetter').isLength({ min: 50, max: 1000 }).trim().withMessage('Cover letter must be 50-1000 characters')
+  body('coverLetter').notEmpty().trim().withMessage('Cover letter is required')
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -21,6 +21,12 @@ router.post('/', authenticateToken, requireRole('student'), [
     }
 
     const { jobId, coverLetter } = req.body;
+
+    // Validate cover letter has at least 5 words
+    const words = coverLetter.trim().split(/\s+/).filter(word => word.length > 0);
+    if (words.length < 5) {
+      return res.status(400).json({ message: 'Cover letter must be at least 5 words' });
+    }
 
     // Check if job exists and is active
     const job = await Job.findOne({ 

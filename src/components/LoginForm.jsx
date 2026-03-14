@@ -31,11 +31,11 @@ const LoginForm = ({ userType, onSuccess }) => {
 
         // Redirect based on user type
         if (response.data.user?.userType === 'student') {
-          navigate('/student-dashboard');
+          navigate('/student/dashboard');
         } else if (response.data.user?.userType === 'organization') {
-          navigate('/organization-dashboard');
+          navigate('/organization/dashboard');
         } else {
-          navigate('/dashboard');
+          navigate('/');
         }
       } else {
         setError('Invalid response from server');

@@ -11,14 +11,13 @@ const jobSchema = new mongoose.Schema({
     type: String,
     required: true,
     trim: true,
-    minlength: 10,
-    maxlength: 2000
-  },
-  category: {
-    type: String,
-    required: false,
-    enum: ['campus-events', 'tutoring', 'research', 'content-creation', 'technical', 'administrative', 'other'],
-    index: true
+    validate: {
+      validator: function(v) {
+        const words = v.trim().split(/\s+/).filter(word => word.length > 0);
+        return words.length >= 5;
+      },
+      message: 'Description must be at least 5 words'
+    }
   },
   location: {
     type: String,
@@ -78,7 +77,6 @@ const jobSchema = new mongoose.Schema({
 // Indexes for better performance
 jobSchema.index({ isActive: 1, deadline: 1, createdAt: -1 });
 jobSchema.index({ organization: 1, createdAt: -1 });
-jobSchema.index({ category: 1, isActive: 1 });
 
 // Auto-deactivate jobs past deadline
 jobSchema.pre('find', function() {
