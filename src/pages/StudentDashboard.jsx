@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Row, Col, Card,  Badge, Tab, Tabs, Alert, Form, InputGroup } from 'react-bootstrap';
+import { Container, Row, Col, Card, Badge, Tab, Tabs, Alert, Form, InputGroup } from 'react-bootstrap';
 import { useAuth } from '../context/AuthContext';
 import JobCard from '../components/JobCard';
 import ApplicationModal from '../components/ApplicationModal';
@@ -55,17 +55,17 @@ const StudentDashboard = () => {
     let filtered = jobs;
 
     if (searchTerm) {
-      filtered = filtered.filter(job => 
+      filtered = filtered.filter(job =>
         job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         job.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        job.skillsRequired.some(skill => 
+        job.skillsRequired?.some(skill =>
           skill.toLowerCase().includes(searchTerm.toLowerCase())
         )
       );
     }
 
     if (locationFilter) {
-      filtered = filtered.filter(job => 
+      filtered = filtered.filter(job =>
         job.location.toLowerCase().includes(locationFilter.toLowerCase())
       );
     }
@@ -74,14 +74,14 @@ const StudentDashboard = () => {
   };
 
   const handleApply = (job) => {
-    // Check if already applied
     const hasApplied = applications.some(app => app.job._id === job._id);
+
     if (hasApplied) {
       setMessage('You have already applied for this job!');
       setTimeout(() => setMessage(''), 3000);
       return;
     }
-    
+
     setSelectedJob(job);
     setShowApplicationModal(true);
   };
@@ -103,15 +103,6 @@ const StudentDashboard = () => {
     setSelectedConversation(null);
   };
 
-  // const getStatusColor = (status) => {
-  //   const colors = {
-  //     pending: 'warning',
-  //     accepted: 'success',
-  //     rejected: 'danger'
-  //   };
-  //   return colors[status] || 'secondary';
-  // };
-
   if (loading) {
     return (
       <Container className="text-center py-5">
@@ -124,6 +115,7 @@ const StudentDashboard = () => {
 
   return (
     <Container className="py-4">
+
       {message && (
         <Alert variant="success" className="text-center">
           {message}
@@ -137,7 +129,9 @@ const StudentDashboard = () => {
               <Row className="align-items-center">
                 <Col>
                   <h3 className="mb-1 fw-bold">Welcome back, {user?.name}!</h3>
-                  <p className="mb-0 opacity-75 fs-5">{user?.course} • {user?.university}</p>
+                  <p className="mb-0 opacity-75 fs-5">
+                    {user?.course} • {user?.university}
+                  </p>
                 </Col>
                 <Col xs="auto">
                   <div className="bg-white bg-opacity-20 rounded-circle p-3">
@@ -151,13 +145,15 @@ const StudentDashboard = () => {
       </Row>
 
       <Tabs defaultActiveKey="browse" className="mb-4">
+
+        {/* Browse Jobs */}
         <Tab eventKey="browse" title={
           <span className="d-flex align-items-center">
             <Briefcase className="me-2" size={16} />
             Browse Jobs ({filteredJobs.length})
           </span>
         }>
-          {/* Search and Filter */}
+
           <Row className="mb-4">
             <Col md={6}>
               <InputGroup>
@@ -172,6 +168,7 @@ const StudentDashboard = () => {
                 />
               </InputGroup>
             </Col>
+
             <Col md={6}>
               <InputGroup>
                 <InputGroup.Text>
@@ -194,8 +191,8 @@ const StudentDashboard = () => {
                   <Briefcase size={48} className="mb-3 text-muted" />
                   <h5>No jobs found</h5>
                   <p className="mb-0 text-muted">
-                    {searchTerm || locationFilter 
-                      ? 'Try adjusting your search criteria' 
+                    {searchTerm || locationFilter
+                      ? 'Try adjusting your search criteria'
                       : 'No jobs available at the moment. Check back later!'
                     }
                   </p>
@@ -204,8 +201,8 @@ const StudentDashboard = () => {
             ) : (
               filteredJobs.map((job) => (
                 <Col lg={6} key={job._id} className="mb-4">
-                  <JobCard 
-                    job={job} 
+                  <JobCard
+                    job={job}
                     onApply={handleApply}
                     showApplyButton={true}
                     hasApplied={applications.some(app => app.job._id === job._id)}
@@ -214,14 +211,17 @@ const StudentDashboard = () => {
               ))
             )}
           </Row>
+
         </Tab>
 
+        {/* Applications */}
         <Tab eventKey="applications" title={
           <span className="d-flex align-items-center">
             <FileText className="me-2" size={16} />
             My Applications ({applications.length})
           </span>
         }>
+
           <Row>
             {applications.length === 0 ? (
               <Col>
@@ -238,13 +238,17 @@ const StudentDashboard = () => {
                 <Col lg={6} key={application._id} className="mb-4">
                   <Card className="h-100 shadow-sm border-0">
                     <Card.Body className="p-4">
+
                       <div className="d-flex justify-content-between align-items-start mb-3">
-                        <Card.Title className="h5 mb-0">{application.job.title}</Card.Title>
+                        <Card.Title className="h5 mb-0">
+                          {application.job.title}
+                        </Card.Title>
+
                         <Badge className={`status-${application.status} px-3 py-2`}>
                           {application.status.toUpperCase()}
                         </Badge>
                       </div>
-                      
+
                       <div className="mb-3">
                         <p className="text-muted mb-1">
                           <strong>Organization:</strong> {application.job.organization?.organizationName}
@@ -259,36 +263,42 @@ const StudentDashboard = () => {
                           <strong>Applied:</strong> {new Date(application.appliedAt).toLocaleDateString()}
                         </p>
                       </div>
-                      
+
                       <Card.Text className="small">
                         <strong>Your Cover Letter:</strong><br />
                         <span className="text-muted">
-                          {application.coverLetter.length > 100 
+                          {application.coverLetter.length > 100
                             ? `${application.coverLetter.substring(0, 100)}...`
                             : application.coverLetter
                           }
                         </span>
                       </Card.Text>
+
                     </Card.Body>
                   </Card>
                 </Col>
               ))
             )}
           </Row>
+
         </Tab>
-        
+
+        {/* Messages */}
         <Tab eventKey="messages" title={
           <span className="d-flex align-items-center">
             <MessageCircle className="me-2" size={16} />
             Messages
           </span>
         }>
+
           <Row>
             <Col lg={8}>
               <ConversationsList onSelectConversation={handleSelectConversation} />
             </Col>
           </Row>
+
         </Tab>
+
       </Tabs>
 
       <ApplicationModal
@@ -298,13 +308,13 @@ const StudentDashboard = () => {
         onApplicationSuccess={handleApplicationSuccess}
       />
 
-      {/* Messages Modal */}
       <MessageModal
         show={showMessagesModal}
         onHide={handleCloseMessages}
         application={selectedConversation?.application}
         currentUser={user}
       />
+
     </Container>
   );
 };
