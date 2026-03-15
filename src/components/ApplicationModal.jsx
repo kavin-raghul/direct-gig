@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Modal, Form, Button, Alert, Badge } from 'react-bootstrap';
 import { useForm } from 'react-hook-form';
-import { MapPin, Calendar, DollarSign } from 'lucide-react';
+import { MapPin, Calendar } from 'lucide-react';
 import api from '../services/api';
 
 const ApplicationModal = ({ show, onHide, job, onApplicationSuccess }) => {
