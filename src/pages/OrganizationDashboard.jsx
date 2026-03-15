@@ -77,14 +77,14 @@ const OrganizationDashboard = () => {
     setSelectedConversation(null);
   };
 
-  const getStatusColor = (status) => {
-    const colors = {
-      pending: 'warning',
-      accepted: 'success',
-      rejected: 'danger'
-    };
-    return colors[status] || 'secondary';
-  };
+  // const getStatusColor = (status) => {
+  //   const colors = {
+  //     pending: 'warning',
+  //     accepted: 'success',
+  //     rejected: 'danger'
+  //   };
+  //   return colors[status] || 'secondary';
+  // };
 
   if (loading) {
     return (

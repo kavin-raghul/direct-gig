@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Row, Col, Card, Button, Badge, Tab, Tabs, Alert, Form, InputGroup } from 'react-bootstrap';
+import { Container, Row, Col, Card,  Badge, Tab, Tabs, Alert, Form, InputGroup } from 'react-bootstrap';
 import { useAuth } from '../context/AuthContext';
 import JobCard from '../components/JobCard';
 import ApplicationModal from '../components/ApplicationModal';
@@ -103,14 +103,14 @@ const StudentDashboard = () => {
     setSelectedConversation(null);
   };
 
-  const getStatusColor = (status) => {
-    const colors = {
-      pending: 'warning',
-      accepted: 'success',
-      rejected: 'danger'
-    };
-    return colors[status] || 'secondary';
-  };
+  // const getStatusColor = (status) => {
+  //   const colors = {
+  //     pending: 'warning',
+  //     accepted: 'success',
+  //     rejected: 'danger'
+  //   };
+  //   return colors[status] || 'secondary';
+  // };
 
   if (loading) {
     return (
