@@ -1,7 +1,7 @@
 import React from 'react';
 import { Container, Row, Col, Card, Button } from 'react-bootstrap';
 import { LinkContainer } from 'react-router-bootstrap';
-import { Users, Building, Briefcase, TrendingUp, Shield, Clock, Star, CheckCircle } from 'lucide-react';
+import { Users, Building,  TrendingUp, Shield, Clock, CheckCircle } from 'lucide-react';
 
 const Home = () => {
   return (
