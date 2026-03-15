@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Container, Row, Col, Card, Badge, Tab, Tabs, Alert, Form, InputGroup } from 'react-bootstrap';
 import { useAuth } from '../context/AuthContext';
 import JobCard from '../components/JobCard';
@@ -23,10 +23,6 @@ const StudentDashboard = () => {
     fetchApplications();
   }, []);
 
-useEffect(() => {
-  filterJobs();
-}, [jobs, searchTerm, locationFilter, filterJobs]);
-
   const fetchJobs = async () => {
     try {
       const response = await api.get('/jobs');
@@ -47,14 +43,14 @@ useEffect(() => {
     }
   };
 
-  const filterJobs = () => {
+  const filterJobs = useCallback(() => {
     let filtered = jobs;
 
     if (searchTerm) {
       filtered = filtered.filter(job => 
         job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         job.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        job.skillsRequired.some(skill => 
+        job.skillsRequired?.some(skill => 
           skill.toLowerCase().includes(searchTerm.toLowerCase())
         )
       );
@@ -67,17 +63,20 @@ useEffect(() => {
     }
 
     setFilteredJobs(filtered);
-  };
+  }, [jobs, searchTerm, locationFilter]);
+
+  useEffect(() => {
+    filterJobs();
+  }, [filterJobs]);
 
   const handleApply = (job) => {
-    // Check if already applied
     const hasApplied = applications.some(app => app.job._id === job._id);
     if (hasApplied) {
       setMessage('You have already applied for this job!');
       setTimeout(() => setMessage(''), 3000);
       return;
     }
-    
+
     setSelectedJob(job);
     setShowApplicationModal(true);
   };
@@ -89,7 +88,6 @@ useEffect(() => {
     setTimeout(() => setMessage(''), 3000);
   };
 
-  
   if (loading) {
     return (
       <Container className="text-center py-5">
@@ -135,7 +133,7 @@ useEffect(() => {
             Browse Jobs ({filteredJobs.length})
           </span>
         }>
-          {/* Search and Filter */}
+          
           <Row className="mb-4">
             <Col md={6}>
               <InputGroup>
@@ -150,6 +148,7 @@ useEffect(() => {
                 />
               </InputGroup>
             </Col>
+
             <Col md={6}>
               <InputGroup>
                 <InputGroup.Text>
@@ -183,7 +182,7 @@ useEffect(() => {
               filteredJobs.map((job) => (
                 <Col lg={6} key={job._id} className="mb-4">
                   <JobCard 
-                    job={job} 
+                    job={job}
                     onApply={handleApply}
                     showApplyButton={true}
                     hasApplied={applications.some(app => app.job._id === job._id)}
@@ -192,6 +191,7 @@ useEffect(() => {
               ))
             )}
           </Row>
+
         </Tab>
 
         <Tab eventKey="applications" title={
@@ -216,13 +216,14 @@ useEffect(() => {
                 <Col lg={6} key={application._id} className="mb-4">
                   <Card className="h-100 shadow-sm border-0">
                     <Card.Body className="p-4">
+
                       <div className="d-flex justify-content-between align-items-start mb-3">
                         <Card.Title className="h5 mb-0">{application.job.title}</Card.Title>
                         <Badge className={`status-${application.status} px-3 py-2`}>
                           {application.status.toUpperCase()}
                         </Badge>
                       </div>
-                      
+
                       <div className="mb-3">
                         <p className="text-muted mb-1">
                           <strong>Organization:</strong> {application.job.organization?.organizationName}
@@ -237,16 +238,17 @@ useEffect(() => {
                           <strong>Applied:</strong> {new Date(application.appliedAt).toLocaleDateString()}
                         </p>
                       </div>
-                      
+
                       <Card.Text className="small">
                         <strong>Your Cover Letter:</strong><br />
                         <span className="text-muted">
-                          {application.coverLetter.length > 100 
+                          {application.coverLetter.length > 100
                             ? `${application.coverLetter.substring(0, 100)}...`
                             : application.coverLetter
                           }
                         </span>
                       </Card.Text>
+
                     </Card.Body>
                   </Card>
                 </Col>
@@ -262,6 +264,7 @@ useEffect(() => {
         job={selectedJob}
         onApplicationSuccess={handleApplicationSuccess}
       />
+
     </Container>
   );
 };
