@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Container, Row, Col, Card, Button, Badge, Alert } from 'react-bootstrap';
 import { useParams, useNavigate } from 'react-router-dom';
-import { MapPin, Clock, DollarSign, Users, Building, ArrowLeft, Calendar } from 'lucide-react';
+import { MapPin, DollarSign, Users, Building, ArrowLeft, Calendar } from 'lucide-react';
 import api from '../services/api';
 import ApplicationModal from '../components/ApplicationModal';
 
@@ -13,11 +13,7 @@ const JobDetails = () => {
   const [showApplicationModal, setShowApplicationModal] = useState(false);
   const [message, setMessage] = useState('');
 
-  useEffect(() => {
-    fetchJobDetails();
-  }, [id]);
-
-  const fetchJobDetails = async () => {
+  const fetchJobDetails = useCallback(async () => {
     try {
       const response = await api.get('/jobs');
       const jobData = response.data.find(j => j._id === id);
@@ -27,7 +23,11 @@ const JobDetails = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
+
+  useEffect(() => {
+    fetchJobDetails();
+  }, [fetchJobDetails]);
 
   const handleApply = () => {
     setShowApplicationModal(true);
@@ -40,7 +40,7 @@ const JobDetails = () => {
   };
 
   const formatCategory = (category) => {
-    return category.split('-').map(word => 
+    return category.split('-').map(word =>
       word.charAt(0).toUpperCase() + word.slice(1)
     ).join(' ');
   };
@@ -76,8 +76,8 @@ const JobDetails = () => {
         </Alert>
       )}
 
-      <Button 
-        variant="outline-secondary" 
+      <Button
+        variant="outline-secondary"
         className="mb-4"
         onClick={() => navigate(-1)}
       >
@@ -91,14 +91,21 @@ const JobDetails = () => {
             <Card.Body className="p-4">
               <div className="mb-4">
                 <h2 className="mb-3 text-primary">{job.title}</h2>
+
                 <div className="d-flex flex-wrap gap-2 mb-3">
-                  <Badge bg="info" className="px-3 py-2">{formatCategory(job.category)}</Badge>
+                  <Badge bg="info" className="px-3 py-2">
+                    {formatCategory(job.category)}
+                  </Badge>
+
                   <Badge bg="success" className="px-3 py-2">
                     <DollarSign size={14} className="me-1" />
                     ₹{job.stipend}
                   </Badge>
+
                   {isDeadlinePassed && (
-                    <Badge bg="danger" className="px-3 py-2">Deadline Passed</Badge>
+                    <Badge bg="danger" className="px-3 py-2">
+                      Deadline Passed
+                    </Badge>
                   )}
                 </div>
               </div>
@@ -135,16 +142,20 @@ const JobDetails = () => {
                     </div>
                   </div>
                 </Col>
+
                 <Col md={6}>
                   <div className="d-flex align-items-center mb-3 p-3 bg-light rounded">
                     <Calendar size={24} className="me-3 text-primary" />
                     <div>
                       <strong>Application Deadline</strong><br />
-                      <span className="text-muted">{new Date(job.deadline).toLocaleDateString()}</span>
+                      <span className="text-muted">
+                        {new Date(job.deadline).toLocaleDateString()}
+                      </span>
                     </div>
                   </div>
                 </Col>
               </Row>
+
             </Card.Body>
           </Card>
         </Col>
@@ -152,13 +163,19 @@ const JobDetails = () => {
         <Col lg={4}>
           <Card className="mb-4 border-0 shadow-sm">
             <Card.Body className="p-4">
+
               <div className="d-flex align-items-center mb-4">
                 <div className="bg-success bg-opacity-10 rounded-circle p-2 me-3">
                   <Building size={24} className="text-success" />
                 </div>
+
                 <div>
-                  <h6 className="mb-0 fw-bold">{job.organization?.organizationName}</h6>
-                  <small className="text-muted">Contact: {job.organization?.name}</small>
+                  <h6 className="mb-0 fw-bold">
+                    {job.organization?.organizationName}
+                  </h6>
+                  <small className="text-muted">
+                    Contact: {job.organization?.name}
+                  </small>
                 </div>
               </div>
 
@@ -178,15 +195,16 @@ const JobDetails = () => {
                 </small>
               </div>
 
-              <Button 
-                variant="primary" 
-                size="lg" 
+              <Button
+                variant="primary"
+                size="lg"
                 className="w-100 py-3 fw-semibold"
                 onClick={handleApply}
                 disabled={isDeadlinePassed}
               >
                 {isDeadlinePassed ? 'Deadline Passed' : 'Apply for This Job'}
               </Button>
+
             </Card.Body>
           </Card>
         </Col>
@@ -198,6 +216,7 @@ const JobDetails = () => {
         job={job}
         onApplicationSuccess={handleApplicationSuccess}
       />
+
     </Container>
   );
 };
