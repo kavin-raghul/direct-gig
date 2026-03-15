@@ -1,6 +1,6 @@
 import React from 'react';
-import { Card, Badge, Button, Row, Col } from 'react-bootstrap';
-import { MapPin, Clock, DollarSign, Users, Calendar, CheckCircle } from 'lucide-react';
+import { Card, Badge, Button } from 'react-bootstrap';
+import { MapPin, DollarSign, Users, Calendar, CheckCircle } from 'lucide-react';
 
 const JobCard = ({ job, onApply, showApplyButton = true, onViewApplications, showManageButton = false, hasApplied = false }) => {
   const formatCategory = (category) => {
