@@ -6,7 +6,7 @@ import JobPostingForm from '../components/JobPostingForm';
 import ConversationsList from '../components/ConversationsList';
 import MessageModal from '../components/MessageModal';
 import api from '../services/api';
-import { Plus, Briefcase, FileText, Building, Users, MessageCircle } from 'lucide-react';
+import { Plus, Briefcase, FileText, Building,  MessageCircle } from 'lucide-react';
 
 const OrganizationDashboard = () => {
   const { user } = useAuth();
