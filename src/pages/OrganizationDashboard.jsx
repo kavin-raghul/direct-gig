@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import JobCard from '../components/JobCard';
 import JobPostingForm from '../components/JobPostingForm';
 import api from '../services/api';
-import { Plus, Briefcase, FileText, Building, Users } from 'lucide-react';
+import { Plus, Briefcase, FileText, Building } from 'lucide-react';
 
 const OrganizationDashboard = () => {
   const { user } = useAuth();
@@ -63,14 +63,7 @@ const OrganizationDashboard = () => {
     }
   };
 
-  const getStatusColor = (status) => {
-    const colors = {
-      pending: 'warning',
-      accepted: 'success',
-      rejected: 'danger'
-    };
-    return colors[status] || 'secondary';
-  };
+ 
 
   if (loading) {
     return (
