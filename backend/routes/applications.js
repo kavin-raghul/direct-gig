@@ -68,6 +68,13 @@ router.post('/', authenticateToken, requireRole('student'), [
     job.applicationsCount += 1;
     await job.save();
 
+    // Push real-time notification to the organization socket room
+    const io = req.app.get('io');
+    if (io) {
+      const populatedApp = await Application.findById(application._id).populate('student', 'name email university course year skills phone');
+      io.to(`org_${job.organization._id}`).emit('new_application', populatedApp);
+    }
+
     res.status(201).json({
       message: 'Application submitted successfully',
       application

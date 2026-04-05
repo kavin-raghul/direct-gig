@@ -22,10 +22,10 @@ export const authenticateToken = async (req, res, next) => {
   } catch (error) {
     if (error.name === 'JsonWebTokenError') {
       console.log('JWT Error:', error.message);
-      return res.status(403).json({ message: 'Invalid token format' });
+      return res.status(401).json({ message: 'Invalid token format' }); // Changed to 401
     }
     if (error.name === 'TokenExpiredError') {
-      return res.status(403).json({ message: 'Token expired' });
+      return res.status(401).json({ message: 'Token expired' }); // Changed to 401
     }
     return res.status(403).json({ message: 'Token verification failed' });
   }

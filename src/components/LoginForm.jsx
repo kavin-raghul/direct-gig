@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Form, Button, Alert } from 'react-bootstrap';
 import { useForm } from 'react-hook-form';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import api from '../services/api';
 
 const LoginForm = ({ userType, onSuccess }) => {
@@ -69,8 +69,12 @@ const LoginForm = ({ userType, onSuccess }) => {
       </Form.Group>
 
       <Form.Group className="mb-4">
-        <Form.Label>Password</Form.Label>
+        <div className="d-flex justify-content-between align-items-center">
+          <Form.Label className="mb-0">Password</Form.Label>
+          <Link to="/forgot-password" className="text-decoration-none small">Forgot password?</Link>
+        </div>
         <Form.Control
+          className="mt-2"
           type="password"
           size="lg"
           placeholder="Enter your password"

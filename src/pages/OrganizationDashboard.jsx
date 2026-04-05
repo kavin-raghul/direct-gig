@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Container, Row, Col, Card, Button, Tab, Tabs, Alert, Modal, Badge } from 'react-bootstrap';
 import { useAuth } from '../context/AuthContext';
 import JobCard from '../components/JobCard';
@@ -6,7 +6,10 @@ import JobPostingForm from '../components/JobPostingForm';
 import ConversationsList from '../components/ConversationsList';
 import MessageModal from '../components/MessageModal';
 import api from '../services/api';
+import { io } from 'socket.io-client';
 import { Plus, Briefcase, FileText, Building,  MessageCircle } from 'lucide-react';
+
+const SOCKET_URL = window.location.hostname === 'localhost' ? 'http://localhost:5000' : 'https://direct-gig.onrender.com';
 
 const OrganizationDashboard = () => {
   const { user } = useAuth();
@@ -19,10 +22,43 @@ const OrganizationDashboard = () => {
   const [selectedJob, setSelectedJob] = useState(null);
   const [selectedConversation, setSelectedConversation] = useState(null);
   const [message, setMessage] = useState('');
+  
+  const selectedJobRef = useRef(null);
+
+  // Sync ref with state so the socket listener always has the latest selected job
+  useEffect(() => {
+    selectedJobRef.current = selectedJob;
+  }, [selectedJob]);
 
   useEffect(() => {
     fetchJobs();
-  }, []);
+
+    // Setup Socket.IO connection
+    const socket = io(SOCKET_URL, {
+      withCredentials: true
+    });
+
+    if (user?.id || user?._id) {
+      socket.emit('join_org_room', user.id || user._id);
+    }
+
+    socket.on('new_application', (application) => {
+      console.log('Real-time application received!', application);
+      
+      // Notify the organization via banner
+      setMessage(`New application from ${application.student.name}!`);
+      setTimeout(() => setMessage(''), 6000);
+
+      // If the org is currently viewing the applications for this specific job, update the list instantly
+      if (selectedJobRef.current && selectedJobRef.current._id === application.job) {
+        setApplications(prev => [application, ...prev]);
+      }
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [user]);
 
   const fetchJobs = async () => {
     try {

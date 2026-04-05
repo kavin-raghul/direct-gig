@@ -11,6 +11,8 @@ import OrganizationDashboard from './pages/OrganizationDashboard';
 import JobDetails from './pages/JobDetails';
 import ProtectedRoute from './components/ProtectedRoute';
 import LoginRedirect from './components/LoginRedirect';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './App.css';
 
@@ -26,6 +28,8 @@ function App() {
               <Route path="/login" element={<StudentAuth />} />
               <Route path="/student/auth" element={<StudentAuth />} />
               <Route path="/organization/auth" element={<OrganizationAuth />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password/:token" element={<ResetPassword />} />
               <Route 
                 path="/student/dashboard" 
                 element={
