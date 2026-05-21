@@ -71,8 +71,8 @@ router.post('/', authenticateToken, requireRole('student'), [
     // Push real-time notification to the organization socket room
     const io = req.app.get('io');
     if (io) {
-      const populatedApp = await Application.findById(application._id).populate('student', 'name email university course year skills phone');
-      io.to(`org_${job.organization._id}`).emit('new_application', populatedApp);
+      const populatedApp = await Application.findById(application._id).populate('student', 'name email university course year skills phone averageRating ratingsCount');
+      io.to(`user_${job.organization._id}`).emit('new_application', populatedApp);
     }
 
     res.status(201).json({
@@ -99,10 +99,31 @@ router.get('/job/:jobId', authenticateToken, requireRole('organization'), async 
     }
 
     const applications = await Application.find({ job: req.params.jobId })
-      .populate('student', 'name email university course year skills phone')
+      .populate('student', 'name email university course year skills phone averageRating ratingsCount')
       .sort({ appliedAt: -1 });
 
-    res.json(applications);
+    // Calculate match score for each applicant
+    const applicationsWithScore = applications.map(app => {
+      const appObj = app.toObject();
+      if (appObj.student) {
+        const studentSkills = appObj.student.skills || [];
+        const jobSkills = job.skillsRequired || [];
+        
+        if (jobSkills.length === 0) {
+          appObj.matchScore = 100;
+        } else {
+          const matchingSkills = jobSkills.filter(skill => 
+            studentSkills.some(s => s.toLowerCase() === skill.toLowerCase())
+          );
+          appObj.matchScore = Math.round((matchingSkills.length / jobSkills.length) * 100);
+        }
+      } else {
+        appObj.matchScore = null;
+      }
+      return appObj;
+    });
+
+    res.json(applicationsWithScore);
   } catch (error) {
     console.error('Error fetching job applications:', error);
     res.status(500).json({ message: 'Server error while fetching applications' });
@@ -115,10 +136,10 @@ router.get('/my-applications', authenticateToken, requireRole('student'), async 
     const applications = await Application.find({ student: req.user._id })
       .populate({
         path: 'job',
-        select: 'title category location stipend deadline organization',
+        select: 'title location amount deadline organization',
         populate: {
           path: 'organization',
-          select: 'organizationName name'
+          select: 'organizationName name averageRating ratingsCount'
         }
       })
       .sort({ appliedAt: -1 });
@@ -159,6 +180,17 @@ router.patch('/:id/status', authenticateToken, requireRole('organization'), [
 
     application.status = status;
     await application.save();
+
+    // Push real-time notification to the student socket room
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`user_${application.student}`).emit('application_status_updated', {
+        applicationId: application._id,
+        status: application.status,
+        jobTitle: application.job.title,
+        updatedAt: application.updatedAt
+      });
+    }
 
     res.json({ 
       message: `Application ${status} successfully`, 

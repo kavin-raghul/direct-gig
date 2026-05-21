@@ -77,6 +77,14 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  averageRating: {
+    type: Number,
+    default: 0
+  },
+  ratingsCount: {
+    type: Number,
+    default: 0
+  },
   refreshTokens: [String],
   resetPasswordToken: String,
   resetPasswordExpire: Date

@@ -4,6 +4,7 @@ import { body, validationResult } from 'express-validator';
 import User from '../models/User.js';
 import crypto from 'crypto';
 import sendEmail from '../utils/sendEmail.js';
+import { authenticateToken } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -31,7 +32,9 @@ const sendTokenResponse = async (user, statusCode, res, message) => {
     id: user._id,
     email: user.email,
     name: user.name,
-    userType: user.userType
+    userType: user.userType,
+    averageRating: user.averageRating || 0,
+    ratingsCount: user.ratingsCount || 0
   };
 
   if (user.userType === 'student') {
@@ -362,6 +365,20 @@ router.put('/reset-password/:token', [
   } catch (error) {
     console.error('Reset password error:', error);
     res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get user details by ID
+router.get('/user/:id', authenticateToken, async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id).select('-password -refreshTokens');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    res.json(user);
+  } catch (error) {
+    console.error('Error fetching user profile:', error);
+    res.status(500).json({ message: 'Server error while fetching user details' });
   }
 });
 

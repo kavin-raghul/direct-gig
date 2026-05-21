@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
+<title>3D Cube Video Effect</title>
+
+<style>
+*{
+  margin:0;
+  padding:0;
+  box-sizing:border-box;
+}
+
+body{
+  overflow:hidden;
+  background:#000;
+  font-family:Arial, sans-serif;
+}
+
+.container{
+  width:100vw;
+  height:100vh;
+  perspective:1500px;
+  overflow:hidden;
+}
+
+.scene{
+  width:100%;
+  height:100%;
+  position:relative;
+  transform-style:preserve-3d;
+  animation:cubeRotate 6s infinite ease-in-out;
+}
+
+.page{
+  position:absolute;
+  width:100%;
+  height:100%;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  font-size:60px;
+  font-weight:bold;
+  color:white;
+  backface-visibility:hidden;
+}
+
+/* Front Page */
+.page-1{
+  background:linear-gradient(135deg,#ff512f,#dd2476);
+  transform:translateZ(50vh);
+}
+
+/* Top Page */
+.page-2{
+  background:linear-gradient(135deg,#2193b0,#6dd5ed);
+  transform:rotateX(-90deg) translateZ(50vh);
+}
+
+/* Bottom Page */
+.page-3{
+  background:linear-gradient(135deg,#11998e,#38ef7d);
+  transform:rotateX(90deg) translateZ(50vh);
+}
+
+/* Animation Like Video */
+@keyframes cubeRotate{
+
+  0%,20%{
+    transform:rotateX(0deg);
+  }
+
+  33%,53%{
+    transform:rotateX(90deg);
+  }
+
+  66%,86%{
+    transform:rotateX(-90deg);
+  }
+
+  100%{
+    transform:rotateX(0deg);
+  }
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+  <div class="scene">
+
+    <div class="page page-1">
+      HOME
+    </div>
+
+    <div class="page page-2">
+      ABOUT
+    </div>
+
+    <div class="page page-3">
+      CONTACT
+    </div>
+
+  </div>
+
+</div>
+
+</body>
+</html>

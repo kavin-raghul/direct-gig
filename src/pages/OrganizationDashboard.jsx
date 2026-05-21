@@ -5,6 +5,8 @@ import JobCard from '../components/JobCard';
 import JobPostingForm from '../components/JobPostingForm';
 import ConversationsList from '../components/ConversationsList';
 import MessageModal from '../components/MessageModal';
+import PortfolioModal from '../components/PortfolioModal';
+import ReviewModal from '../components/ReviewModal';
 import api from '../services/api';
 import { io } from 'socket.io-client';
 import { Plus, Briefcase, FileText, Building,  MessageCircle } from 'lucide-react';
@@ -22,8 +24,35 @@ const OrganizationDashboard = () => {
   const [selectedJob, setSelectedJob] = useState(null);
   const [selectedConversation, setSelectedConversation] = useState(null);
   const [message, setMessage] = useState('');
+  const [unreadMessages, setUnreadMessages] = useState(0);
+
+  // Escrow, portfolio & reviews states
+  const [escrowStatuses, setEscrowStatuses] = useState({});
+  const [showPortfolioModal, setShowPortfolioModal] = useState(false);
+  const [selectedUserIdForPortfolio, setSelectedUserIdForPortfolio] = useState(null);
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [selectedApplicationIdForReview, setSelectedApplicationIdForReview] = useState(null);
+
+  const handleOpenPortfolioModal = (userId) => {
+    setSelectedUserIdForPortfolio(userId);
+    setShowPortfolioModal(true);
+  };
+
+  const handleOpenReviewModal = (applicationId) => {
+    setSelectedApplicationIdForReview(applicationId);
+    setShowReviewModal(true);
+  };
   
   const selectedJobRef = useRef(null);
+
+  const fetchUnreadCount = async () => {
+    try {
+      const response = await api.get('/messages/unread-count');
+      setUnreadMessages(response.data.unreadCount);
+    } catch (err) {
+      console.error('Error fetching unread message count:', err);
+    }
+  };
 
   // Sync ref with state so the socket listener always has the latest selected job
   useEffect(() => {
@@ -32,15 +61,22 @@ const OrganizationDashboard = () => {
 
   useEffect(() => {
     fetchJobs();
+    fetchUnreadCount();
 
-    // Setup Socket.IO connection
+    const handleUnreadUpdate = () => {
+      fetchUnreadCount();
+    };
+
+    window.addEventListener('unread-count-updated', handleUnreadUpdate);
+
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    // Setup Socket.IO connection with secure token
     const socket = io(SOCKET_URL, {
+      query: { token },
       withCredentials: true
     });
-
-    if (user?.id || user?._id) {
-      socket.emit('join_org_room', user.id || user._id);
-    }
 
     socket.on('new_application', (application) => {
       console.log('Real-time application received!', application);
@@ -55,8 +91,18 @@ const OrganizationDashboard = () => {
       }
     });
 
+    socket.on('new_message', (msg) => {
+      console.log('Real-time message received in dashboard!', msg);
+      if (msg.sender._id !== user.id && msg.sender._id !== user._id) {
+        setMessage(`New message from ${msg.sender.name}!`);
+        setTimeout(() => setMessage(''), 5000);
+        fetchUnreadCount();
+      }
+    });
+
     return () => {
       socket.disconnect();
+      window.removeEventListener('unread-count-updated', handleUnreadUpdate);
     };
   }, [user]);
 
@@ -75,6 +121,19 @@ const OrganizationDashboard = () => {
     try {
       const response = await api.get(`/applications/job/${jobId}`);
       setApplications(response.data);
+
+      // Fetch escrow status for each accepted application
+      const acceptedApps = response.data.filter(app => app.status === 'accepted');
+      const statuses = {};
+      await Promise.all(acceptedApps.map(async (app) => {
+        try {
+          const res = await api.get(`/payments/status/${app._id}`);
+          statuses[app._id] = res.data;
+        } catch (err) {
+          console.error(`Error fetching escrow for ${app._id}:`, err);
+        }
+      }));
+      setEscrowStatuses(statuses);
     } catch (error) {
       console.error('Error fetching applications:', error);
     }
@@ -111,7 +170,66 @@ const OrganizationDashboard = () => {
   const handleCloseMessages = () => {
     setShowMessagesModal(false);
     setSelectedConversation(null);
+    fetchUnreadCount();
   };
+
+  // Payment integration handlers
+  const handleInitiatePayment = async (applicationId) => {
+    try {
+      setMessage('Creating payment session...');
+      const response = await api.post('/payments/create-checkout-session', { applicationId });
+      if (response.data.url) {
+        window.location.href = response.data.url;
+      } else {
+        setMessage('Failed to generate checkout payment URL.');
+      }
+    } catch (err) {
+      console.error('Error initiating payment:', err);
+      setMessage(err.response?.data?.message || 'Payment initiation failed.');
+      setTimeout(() => setMessage(''), 5000);
+    }
+  };
+
+  const handleReleaseEscrow = async (escrowId, jobId) => {
+    try {
+      setMessage('Releasing escrow funds to student...');
+      const response = await api.post('/payments/release-escrow', { escrowId });
+      setMessage('Funds released from escrow successfully!');
+      setTimeout(() => setMessage(''), 3000);
+      await fetchApplications(jobId);
+    } catch (err) {
+      console.error('Error releasing escrow:', err);
+      setMessage(err.response?.data?.message || 'Failed to release escrow.');
+      setTimeout(() => setMessage(''), 5000);
+    }
+  };
+
+  // Check for successful payment redirects
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('escrow_success') === 'true') {
+      setMessage('Stipend payment secured in escrow successfully!');
+      const appId = urlParams.get('appId');
+      if (appId) {
+        // Wait a bit to ensure database updates, then refresh job applications
+        setTimeout(async () => {
+          if (selectedJobRef.current) {
+            await fetchApplications(selectedJobRef.current._id);
+          }
+        }, 1000);
+      }
+      setTimeout(() => {
+        window.history.replaceState({}, document.title, window.location.pathname);
+        setMessage('');
+      }, 5000);
+    } else if (urlParams.get('escrow_cancel') === 'true') {
+      setMessage('Payment process was cancelled.');
+      setTimeout(() => {
+        window.history.replaceState({}, document.title, window.location.pathname);
+        setMessage('');
+      }, 5000);
+    }
+  }, []);
 
   // const getStatusColor = (status) => {
   //   const colors = {
@@ -212,6 +330,11 @@ const OrganizationDashboard = () => {
           <span className="d-flex align-items-center">
             <MessageCircle className="me-2" size={16} />
             Messages
+            {unreadMessages > 0 && (
+              <Badge bg="danger" pill className="ms-2 px-2 py-0.5" style={{ fontSize: '10px' }}>
+                {unreadMessages}
+              </Badge>
+            )}
           </span>
         }>
           <Row>
@@ -251,8 +374,27 @@ const OrganizationDashboard = () => {
                        
                         </div>
                         <div>
-                          <h6 className="mb-0 fw-bold">{application.student.name}</h6>
-                          <small className="text-muted">{application.student.email}</small>
+                          <h6 
+                            className="mb-0 fw-bold text-primary text-decoration-underline" 
+                            style={{ cursor: 'pointer' }}
+                            onClick={() => handleOpenPortfolioModal(application.student._id || application.student)}
+                          >
+                            {application.student.name}
+                          </h6>
+                          {application.matchScore !== undefined && application.matchScore !== null && (
+                            <Badge 
+                              className="px-2 py-0.5 mt-1 fw-bold d-inline-block"
+                              style={{
+                                fontSize: '10px',
+                                backgroundColor: application.matchScore >= 80 ? 'rgba(46, 204, 113, 0.15)' : application.matchScore >= 50 ? 'rgba(243, 156, 18, 0.15)' : 'rgba(231, 76, 60, 0.15)',
+                                color: application.matchScore >= 80 ? '#2ecc71' : application.matchScore >= 50 ? '#f39c12' : '#e74c3c',
+                                border: application.matchScore >= 80 ? '1px solid rgba(46, 204, 113, 0.3)' : application.matchScore >= 50 ? '1px solid rgba(243, 156, 18, 0.3)' : '1px solid rgba(231, 76, 60, 0.3)'
+                              }}
+                            >
+                              {application.matchScore}% Match
+                            </Badge>
+                          )}
+                          <div className="text-muted small mt-1">{application.student.email}</div>
                         </div>
                       </div>
                       
@@ -313,6 +455,81 @@ const OrganizationDashboard = () => {
                           </Button>
                         </div>
                       )}
+                      {application.status === 'accepted' && (
+                        <div className="d-grid gap-2">
+                          <Button 
+                            variant="outline-primary" 
+                            size="sm"
+                            className="d-flex align-items-center justify-content-center mb-2"
+                            onClick={() => {
+                              setShowApplicationsModal(false);
+                              handleSelectConversation({ application });
+                            }}
+                          >
+                            <MessageCircle size={16} className="me-2" />
+                            Message Student
+                          </Button>
+
+                          {/* Escrow Payments for organization */}
+                          <div className="border rounded p-2.5 text-start bg-light shadow-sm" style={{ fontSize: '12px' }}>
+                            <div className="fw-bold mb-1.5 text-primary small d-flex align-items-center gap-1">
+                              <span>Secure Escrow Operations</span>
+                            </div>
+
+                            {(!escrowStatuses[application._id] || escrowStatuses[application._id].status === 'none') ? (
+                              <div>
+                                <p className="mb-2 text-muted">Deposited stipend will be held in escrow until release.</p>
+                                <Button 
+                                  variant="success" 
+                                  size="sm" 
+                                  className="w-100 fw-bold"
+                                  onClick={() => handleInitiatePayment(application._id)}
+                                >
+                                  Deposit Stipend (₹{selectedJob?.amount})
+                                </Button>
+                              </div>
+                            ) : escrowStatuses[application._id].status === 'pending_deposit' ? (
+                              <div>
+                                <p className="mb-2 text-warning fw-semibold">🔒 Deposit pending...</p>
+                                <Button 
+                                  variant="success" 
+                                  size="sm" 
+                                  className="w-100 fw-bold"
+                                  onClick={() => handleInitiatePayment(application._id)}
+                                >
+                                  Deposit Stipend (₹{selectedJob?.amount})
+                                </Button>
+                              </div>
+                            ) : escrowStatuses[application._id].status === 'deposited' ? (
+                              <div>
+                                <p className="mb-2 text-success fw-bold">🔒 Secured in Escrow (₹{escrowStatuses[application._id].amount})</p>
+                                <Button 
+                                  variant="primary" 
+                                  size="sm" 
+                                  className="w-100 fw-bold"
+                                  onClick={() => handleReleaseEscrow(escrowStatuses[application._id]._id, selectedJob._id)}
+                                >
+                                  Release Escrow to Student
+                                </Button>
+                              </div>
+                            ) : escrowStatuses[application._id].status === 'completed' ? (
+                              <div>
+                                <p className="mb-2 text-success fw-bold">💸 Paid & Completed</p>
+                                <Button 
+                                  variant="outline-secondary" 
+                                  size="sm" 
+                                  className="w-100 fw-bold"
+                                  onClick={() => handleOpenReviewModal(application._id)}
+                                >
+                                  Leave Review
+                                </Button>
+                              </div>
+                            ) : (
+                              <p className="mb-0 text-danger">Refunded / Cancelled</p>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </Col>
                   </Row>
                 </Card.Body>
@@ -328,6 +545,24 @@ const OrganizationDashboard = () => {
         onHide={handleCloseMessages}
         application={selectedConversation?.application}
         currentUser={user}
+      />
+      <PortfolioModal
+        show={showPortfolioModal}
+        onHide={() => {
+          setShowPortfolioModal(false);
+          setSelectedUserIdForPortfolio(null);
+        }}
+        userId={selectedUserIdForPortfolio}
+      />
+
+      <ReviewModal
+        show={showReviewModal}
+        onHide={() => {
+          setShowReviewModal(false);
+          setSelectedApplicationIdForReview(null);
+        }}
+        applicationId={selectedApplicationIdForReview}
+        onReviewSuccess={() => selectedJob && fetchApplications(selectedJob._id)}
       />
     </Container>
   );

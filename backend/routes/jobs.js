@@ -1,12 +1,12 @@
 import express from 'express';
 import { body, validationResult } from 'express-validator';
 import Job from '../models/Job.js';
-import { authenticateToken, requireRole } from '../middleware/auth.js';
+import { authenticateToken, requireRole, optionalAuth } from '../middleware/auth.js';
 
 const router = express.Router();
 
-// Get all active jobs (public route)
-router.get('/', async (req, res) => {
+// Get all active jobs (public route with optional auth for matching)
+router.get('/', optionalAuth, async (req, res) => {
   try {
     const { location, search } = req.query;
     
@@ -29,11 +29,42 @@ router.get('/', async (req, res) => {
     }
 
     const jobs = await Job.find(query)
-      .populate('organization', 'organizationName name email')
+      .populate('organization', 'organizationName name email averageRating ratingsCount')
       .sort({ createdAt: -1 })
       .limit(50);
     
-    res.json(jobs);
+    // Calculate match score if the logged-in user is a student
+    let jobsWithMatchScore = jobs.map(job => {
+      const jobObj = job.toObject();
+      if (req.user && req.user.userType === 'student') {
+        const studentSkills = req.user.skills || [];
+        const jobSkills = job.skillsRequired || [];
+        
+        if (jobSkills.length === 0) {
+          jobObj.matchScore = 100;
+        } else {
+          const matchingSkills = jobSkills.filter(skill => 
+            studentSkills.some(s => s.toLowerCase() === skill.toLowerCase())
+          );
+          jobObj.matchScore = Math.round((matchingSkills.length / jobSkills.length) * 100);
+        }
+      } else {
+        jobObj.matchScore = null;
+      }
+      return jobObj;
+    });
+
+    // If student is logged-in, sort by match score descending, then by creation date
+    if (req.user && req.user.userType === 'student') {
+      jobsWithMatchScore.sort((a, b) => {
+        if (b.matchScore !== a.matchScore) {
+          return (b.matchScore || 0) - (a.matchScore || 0);
+        }
+        return new Date(b.createdAt) - new Date(a.createdAt);
+      });
+    }
+    
+    res.json(jobsWithMatchScore);
   } catch (error) {
     console.error('Error fetching jobs:', error);
     res.status(500).json({ message: 'Server error while fetching jobs' });
@@ -60,7 +91,7 @@ router.get('/:id', async (req, res) => {
       _id: req.params.id, 
       isActive: true,
       deadline: { $gte: new Date() }
-    }).populate('organization', 'organizationName name email');
+    }).populate('organization', 'organizationName name email averageRating ratingsCount');
     
     if (!job) {
       return res.status(404).json({ message: 'Job not found or no longer active' });
@@ -121,7 +152,13 @@ router.post('/', authenticateToken, requireRole('organization'), [
     await job.save();
 
     const populatedJob = await Job.findById(job._id)
-      .populate('organization', 'organizationName name email');
+      .populate('organization', 'organizationName name email averageRating ratingsCount');
+
+    // Broadcast the new job to all connected sockets in real-time
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('new_job', populatedJob);
+    }
 
     res.status(201).json({
       message: 'Job posted successfully',

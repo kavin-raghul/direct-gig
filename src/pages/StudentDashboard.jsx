@@ -1,15 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Row, Col, Card, Badge, Tab, Tabs, Alert, Form, InputGroup } from 'react-bootstrap';
+import { Container, Row, Col, Card, Button, Badge, Tab, Tabs, Alert, Form, InputGroup } from 'react-bootstrap';
 import { useAuth } from '../context/AuthContext';
 import JobCard from '../components/JobCard';
 import ApplicationModal from '../components/ApplicationModal';
 import ConversationsList from '../components/ConversationsList';
 import MessageModal from '../components/MessageModal';
+import PortfolioModal from '../components/PortfolioModal';
+import ReviewModal from '../components/ReviewModal';
 import api from '../services/api';
+import { io } from 'socket.io-client';
 import { Briefcase, FileText, User, Search, Filter, MessageCircle } from 'lucide-react';
 
+const SOCKET_URL = window.location.hostname === 'localhost' ? 'http://localhost:5000' : 'https://direct-gig.onrender.com';
+
 const StudentDashboard = () => {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [jobs, setJobs] = useState([]);
   const [filteredJobs, setFilteredJobs] = useState([]);
   const [applications, setApplications] = useState([]);
@@ -21,11 +26,94 @@ const StudentDashboard = () => {
   const [message, setMessage] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [locationFilter, setLocationFilter] = useState('');
+  const [unreadMessages, setUnreadMessages] = useState(0);
+
+  // Escrow & review/portfolio states
+  const [escrowStatuses, setEscrowStatuses] = useState({});
+  const [showPortfolioModal, setShowPortfolioModal] = useState(false);
+  const [selectedUserIdForPortfolio, setSelectedUserIdForPortfolio] = useState(null);
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [selectedApplicationIdForReview, setSelectedApplicationIdForReview] = useState(null);
+
+  const handleOpenPortfolioModal = (userId) => {
+    setSelectedUserIdForPortfolio(userId);
+    setShowPortfolioModal(true);
+  };
+
+  const handleOpenReviewModal = (applicationId) => {
+    setSelectedApplicationIdForReview(applicationId);
+    setShowReviewModal(true);
+  };
+
+  const fetchUnreadCount = async () => {
+    try {
+      const response = await api.get('/messages/unread-count');
+      setUnreadMessages(response.data.unreadCount);
+    } catch (err) {
+      console.error('Error fetching unread message count:', err);
+    }
+  };
 
   useEffect(() => {
     fetchJobs();
     fetchApplications();
+    fetchUnreadCount();
+    if (refreshUser) refreshUser();
   }, []);
+
+  useEffect(() => {
+    const handleUnreadUpdate = () => {
+      fetchUnreadCount();
+    };
+
+    window.addEventListener('unread-count-updated', handleUnreadUpdate);
+
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    const socket = io(SOCKET_URL, {
+      query: { token },
+      withCredentials: true
+    });
+
+    socket.on('application_status_updated', (data) => {
+      console.log('Application status update received in real-time!', data);
+      setMessage(`Application status updated to "${data.status.toUpperCase()}" for job: ${data.jobTitle}!`);
+      setTimeout(() => setMessage(''), 6000);
+      
+      // Update applications state in real-time
+      setApplications(prev => 
+        prev.map(app => 
+          app._id === data.applicationId 
+            ? { ...app, status: data.status, updatedAt: data.updatedAt } 
+            : app
+        )
+      );
+    });
+
+    socket.on('new_job', (newJob) => {
+      console.log('Real-time new job posted!', newJob);
+      // Prepend the new job to the jobs list if it's not already in it
+      setJobs(prev => {
+        if (prev.some(j => j._id === newJob._id)) return prev;
+        return [newJob, ...prev];
+      });
+    });
+
+    socket.on('new_message', (msg) => {
+      console.log('Real-time message received in student dashboard!', msg);
+      if (msg.sender._id !== user.id && msg.sender._id !== user._id) {
+        setMessage(`New message from ${msg.sender.name}!`);
+        setTimeout(() => setMessage(''), 5000);
+        fetchUnreadCount();
+      }
+    });
+
+    return () => {
+      socket.disconnect();
+      window.removeEventListener('unread-count-updated', handleUnreadUpdate);
+    };
+  }, [user]);
 
   useEffect(() => {
     filterJobs();
@@ -46,6 +134,19 @@ const StudentDashboard = () => {
     try {
       const response = await api.get('/applications/my-applications');
       setApplications(response.data);
+
+      // Fetch escrow status for accepted applications
+      const acceptedApps = response.data.filter(app => app.status === 'accepted');
+      const statuses = {};
+      await Promise.all(acceptedApps.map(async (app) => {
+        try {
+          const res = await api.get(`/payments/status/${app._id}`);
+          statuses[app._id] = res.data;
+        } catch (err) {
+          console.error(`Error fetching escrow for ${app._id}:`, err);
+        }
+      }));
+      setEscrowStatuses(statuses);
     } catch (error) {
       console.error('Error fetching applications:', error);
     }
@@ -101,6 +202,7 @@ const StudentDashboard = () => {
   const handleCloseMessages = () => {
     setShowMessagesModal(false);
     setSelectedConversation(null);
+    fetchUnreadCount();
   };
 
   if (loading) {
@@ -132,6 +234,9 @@ const StudentDashboard = () => {
                   <p className="mb-0 opacity-75 fs-5">
                     {user?.course} • {user?.university}
                   </p>
+                  <div className="mt-2 text-white bg-white bg-opacity-10 d-inline-block px-3 py-1 rounded-pill small">
+                    <span className="text-warning">★</span> {user?.averageRating > 0 ? user.averageRating.toFixed(1) : 'No rating yet'} ({user?.ratingsCount || 0} reviews)
+                  </div>
                 </Col>
                 <Col xs="auto">
                   <div className="bg-white bg-opacity-20 rounded-circle p-3">
@@ -205,7 +310,8 @@ const StudentDashboard = () => {
                     job={job}
                     onApply={handleApply}
                     showApplyButton={true}
-                    hasApplied={applications.some(app => app.job._id === job._id)}
+                    hasApplied={applications.some(app => app.job && app.job._id === job._id)}
+                    onOpenOrgPortfolio={handleOpenPortfolioModal}
                   />
                 </Col>
               ))
@@ -241,7 +347,7 @@ const StudentDashboard = () => {
 
                       <div className="d-flex justify-content-between align-items-start mb-3">
                         <Card.Title className="h5 mb-0">
-                          {application.job.title}
+                          {application.job?.title || 'Job details unavailable'}
                         </Card.Title>
 
                         <Badge className={`status-${application.status} px-3 py-2`}>
@@ -251,20 +357,30 @@ const StudentDashboard = () => {
 
                       <div className="mb-3">
                         <p className="text-muted mb-1">
-                          <strong>Organization:</strong> {application.job.organization?.organizationName}
+                          <strong>Organization:</strong>{' '}
+                          <span 
+                            className="text-primary fw-semibold text-decoration-underline" 
+                            style={{ cursor: 'pointer' }}
+                            onClick={() => handleOpenPortfolioModal(application.job?.organization?._id || application.job?.organization)}
+                          >
+                            {application.job?.organization?.organizationName || application.job?.organization?.name || 'Unknown'}
+                          </span>
+                          <span className="text-warning small ms-2 fw-semibold">
+                            ★ {application.job?.organization?.averageRating > 0 ? application.job.organization.averageRating.toFixed(1) : 'N/A'} ({application.job?.organization?.ratingsCount || 0})
+                          </span>
                         </p>
                         <p className="text-muted mb-1">
-                          <strong>Location:</strong> {application.job.location}
+                          <strong>Location:</strong> {application.job?.location || 'N/A'}
                         </p>
                         <p className="text-muted mb-1">
-                          <strong>Stipend:</strong> ₹{application.job.stipend}
+                          <strong>Stipend:</strong> {application.job ? `₹${application.job.amount || application.job.stipend}` : 'N/A'}
                         </p>
                         <p className="text-muted mb-0">
                           <strong>Applied:</strong> {new Date(application.appliedAt).toLocaleDateString()}
                         </p>
                       </div>
 
-                      <Card.Text className="small">
+                      <Card.Text className="small mb-3">
                         <strong>Your Cover Letter:</strong><br />
                         <span className="text-muted">
                           {application.coverLetter.length > 100
@@ -274,6 +390,60 @@ const StudentDashboard = () => {
                         </span>
                       </Card.Text>
 
+                      {application.status === 'accepted' && (
+                        <div className="mt-3 p-3 rounded shadow-sm" style={{ backgroundColor: 'rgba(var(--bs-primary-rgb), 0.03)', border: '1px solid rgba(var(--bs-primary-rgb), 0.1)' }}>
+                          <h6 className="fw-bold mb-2 text-primary small d-flex align-items-center justify-content-between">
+                            <span>Escrow Payments & Progress</span>
+                          </h6>
+                          <div className="d-flex flex-column gap-1.5 mb-3 small">
+                            <div className="d-flex align-items-center justify-content-between">
+                              <span className="text-muted">1. Candidate Selected</span>
+                              <span className="text-success fw-bold">✓ Complete</span>
+                            </div>
+                            
+                            <div className="d-flex align-items-center justify-content-between">
+                              <span className="text-muted">2. Escrow Deposit</span>
+                              {(!escrowStatuses[application._id] || escrowStatuses[application._id].status === 'none' || escrowStatuses[application._id].status === 'pending_deposit') ? (
+                                <span className="text-warning fw-semibold animate-pulse">🔒 Awaiting Deposit...</span>
+                              ) : (
+                                <span className="text-success fw-bold">🔒 Secured (₹{escrowStatuses[application._id].amount})</span>
+                              )}
+                            </div>
+
+                            <div className="d-flex align-items-center justify-content-between">
+                              <span className="text-muted">3. Release & Pay</span>
+                              {escrowStatuses[application._id]?.status === 'completed' ? (
+                                <span className="text-success fw-bold">💸 Released to Bank</span>
+                              ) : (
+                                <span className="text-muted">Awaiting Release</span>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="d-flex gap-2">
+                            <Button 
+                              variant="outline-primary" 
+                              size="sm" 
+                              className="flex-grow-1 d-flex align-items-center justify-content-center py-2"
+                              onClick={() => handleSelectConversation({ application })}
+                            >
+                              <MessageCircle size={16} className="me-2" />
+                              Chat
+                            </Button>
+                            
+                            {escrowStatuses[application._id]?.status === 'completed' && (
+                              <Button 
+                                variant="primary" 
+                                size="sm" 
+                                className="flex-grow-1 py-2 fw-semibold"
+                                onClick={() => handleOpenReviewModal(application._id)}
+                              >
+                                Leave Review
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </Card.Body>
                   </Card>
                 </Col>
@@ -288,6 +458,11 @@ const StudentDashboard = () => {
           <span className="d-flex align-items-center">
             <MessageCircle className="me-2" size={16} />
             Messages
+            {unreadMessages > 0 && (
+              <Badge bg="danger" pill className="ms-2 px-2 py-0.5" style={{ fontSize: '10px' }}>
+                {unreadMessages}
+              </Badge>
+            )}
           </span>
         }>
 
@@ -313,6 +488,25 @@ const StudentDashboard = () => {
         onHide={handleCloseMessages}
         application={selectedConversation?.application}
         currentUser={user}
+      />
+
+      <PortfolioModal
+        show={showPortfolioModal}
+        onHide={() => {
+          setShowPortfolioModal(false);
+          setSelectedUserIdForPortfolio(null);
+        }}
+        userId={selectedUserIdForPortfolio}
+      />
+
+      <ReviewModal
+        show={showReviewModal}
+        onHide={() => {
+          setShowReviewModal(false);
+          setSelectedApplicationIdForReview(null);
+        }}
+        applicationId={selectedApplicationIdForReview}
+        onReviewSuccess={fetchApplications}
       />
 
     </Container>

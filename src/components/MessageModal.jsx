@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Modal, Form, Button, Alert, Row, Col, Card, Badge } from 'react-bootstrap';
 import { Send, MessageCircle, User, Building } from 'lucide-react';
+import { io } from 'socket.io-client';
 import api from '../services/api';
+
+const SOCKET_URL = window.location.hostname === 'localhost' ? 'http://localhost:5000' : 'https://direct-gig.onrender.com';
 
 const MessageModal = ({ show, onHide, application, currentUser }) => {
   const [messages, setMessages] = useState([]);
@@ -10,6 +13,7 @@ const MessageModal = ({ show, onHide, application, currentUser }) => {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
   const messagesEndRef = useRef(null);
+  const currentUserId = currentUser?.id || currentUser?._id;
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -25,6 +29,43 @@ const MessageModal = ({ show, onHide, application, currentUser }) => {
     scrollToBottom();
   }, [messages]);
 
+  useEffect(() => {
+    if (!show || !application) return;
+
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    const socket = io(SOCKET_URL, {
+      query: { token },
+      withCredentials: true
+    });
+
+    socket.on('new_message', (msg) => {
+      console.log('Real-time message received in modal:', msg);
+      if (msg.application === application._id || msg.application?._id === application._id) {
+        setMessages(prev => {
+          if (prev.some(m => m._id === msg._id)) return prev;
+          return [...prev, msg];
+        });
+
+        // Mark as read in backend if we are the receiver
+        if (msg.sender._id !== currentUserId && msg.sender !== currentUserId) {
+          api.patch('/messages/mark-read', { applicationId: application._id })
+            .then(() => {
+              window.dispatchEvent(new CustomEvent('unread-count-updated'));
+            })
+            .catch(err => {
+              console.error('Failed to mark message as read:', err);
+            });
+        }
+      }
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [show, application, currentUserId]);
+
   const fetchMessages = async () => {
     setLoading(true);
     try {
@@ -33,6 +74,7 @@ const MessageModal = ({ show, onHide, application, currentUser }) => {
       
       // Mark messages as read
       await api.patch('/messages/mark-read', { applicationId: application._id });
+      window.dispatchEvent(new CustomEvent('unread-count-updated'));
     } catch (error) {
       console.error('Error fetching messages:', error);
       setError('Failed to load messages');
@@ -54,7 +96,10 @@ const MessageModal = ({ show, onHide, application, currentUser }) => {
         content: newMessage.trim()
       });
 
-      setMessages(prev => [...prev, response.data.data]);
+      setMessages(prev => {
+        if (prev.some(m => m._id === response.data.data._id)) return prev;
+        return [...prev, response.data.data];
+      });
       setNewMessage('');
     } catch (error) {
       console.error('Error sending message:', error);
@@ -142,12 +187,12 @@ const MessageModal = ({ show, onHide, application, currentUser }) => {
               <div
                 key={message._id}
                 className={`mb-3 d-flex ${
-                  message.sender._id === currentUser.id ? 'justify-content-end' : 'justify-content-start'
+                  message.sender._id === currentUserId ? 'justify-content-end' : 'justify-content-start'
                 }`}
               >
                 <div
                   className={`message-bubble p-3 rounded ${
-                    message.sender._id === currentUser.id
+                    message.sender._id === currentUserId
                       ? 'bg-primary text-white'
                       : 'bg-light border'
                   }`}
@@ -155,12 +200,12 @@ const MessageModal = ({ show, onHide, application, currentUser }) => {
                 >
                   <div className="d-flex justify-content-between align-items-start mb-1">
                     <small className={`fw-bold ${
-                      message.sender._id === currentUser.id ? 'text-white-50' : 'text-muted'
+                      message.sender._id === currentUserId ? 'text-white-50' : 'text-muted'
                     }`}>
-                      {message.sender._id === currentUser.id ? 'You' : message.sender.name}
+                      {message.sender._id === currentUserId ? 'You' : message.sender.name}
                     </small>
                     <small className={`${
-                      message.sender._id === currentUser.id ? 'text-white-50' : 'text-muted'
+                      message.sender._id === currentUserId ? 'text-white-50' : 'text-muted'
                     }`}>
                       {new Date(message.createdAt).toLocaleTimeString([], { 
                         hour: '2-digit', 

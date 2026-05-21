@@ -9,6 +9,7 @@ import OrganizationAuth from './pages/OrganizationAuth';
 import StudentDashboard from './pages/StudentDashboard';
 import OrganizationDashboard from './pages/OrganizationDashboard';
 import JobDetails from './pages/JobDetails';
+import MockCheckout from './pages/MockCheckout';
 import ProtectedRoute from './components/ProtectedRoute';
 import LoginRedirect from './components/LoginRedirect';
 import ForgotPassword from './pages/ForgotPassword';
@@ -43,6 +44,14 @@ function App() {
                 element={
                   <ProtectedRoute userType="organization">
                     <OrganizationDashboard />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/mock-checkout" 
+                element={
+                  <ProtectedRoute userType="organization">
+                    <MockCheckout />
                   </ProtectedRoute>
                 } 
               />

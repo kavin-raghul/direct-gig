@@ -60,6 +60,13 @@ router.post('/', authenticateToken, [
     // Populate sender details
     await message.populate('sender', 'name email organizationName');
 
+    // Emit real-time message event via Socket.IO
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`user_${receiver}`).emit('new_message', message);
+      io.to(`user_${req.user._id}`).emit('new_message', message);
+    }
+
     res.status(201).json({
       message: 'Message sent successfully',
       data: message

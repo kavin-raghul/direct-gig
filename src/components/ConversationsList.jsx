@@ -1,19 +1,49 @@
 import React, { useState, useEffect } from 'react';
 import { Card, ListGroup, Badge, Button, Alert, Spinner } from 'react-bootstrap';
 import { MessageCircle, User, Building, Clock } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { io } from 'socket.io-client';
 import api from '../services/api';
 
+const SOCKET_URL = window.location.hostname === 'localhost' ? 'http://localhost:5000' : 'https://direct-gig.onrender.com';
+
 const ConversationsList = ({ onSelectConversation }) => {
+  const { user } = useAuth();
+  const currentUserId = user?.id || user?._id;
   const [conversations, setConversations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    fetchConversations();
+    fetchConversations(true);
+
+    const handleUnreadUpdate = () => {
+      fetchConversations(false);
+    };
+
+    window.addEventListener('unread-count-updated', handleUnreadUpdate);
+
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    const socket = io(SOCKET_URL, {
+      query: { token },
+      withCredentials: true
+    });
+
+    socket.on('new_message', (msg) => {
+      console.log('Real-time message received in ConversationsList:', msg);
+      fetchConversations(false);
+    });
+
+    return () => {
+      socket.disconnect();
+      window.removeEventListener('unread-count-updated', handleUnreadUpdate);
+    };
   }, []);
 
-  const fetchConversations = async () => {
-    setLoading(true);
+  const fetchConversations = async (showLoading = false) => {
+    if (showLoading) setLoading(true);
     try {
       const response = await api.get('/messages/conversations');
       setConversations(response.data);
@@ -21,7 +51,7 @@ const ConversationsList = ({ onSelectConversation }) => {
       console.error('Error fetching conversations:', error);
       setError('Failed to load conversations');
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   };
 
@@ -41,9 +71,11 @@ const ConversationsList = ({ onSelectConversation }) => {
 
   const getOtherUser = (conversation) => {
     const { application } = conversation;
-    // This assumes the current user is either student or organization
-    // You might need to adjust this based on your user context
-    return application.student || application.organization;
+    // Safely check who the current user is to return the other party
+    if (application.student?._id === currentUserId || application.student === currentUserId) {
+      return application.organization;
+    }
+    return application.student;
   };
 
   if (loading) {
