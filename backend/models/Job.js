@@ -11,28 +11,39 @@ const jobSchema = new mongoose.Schema({
     type: String,
     required: true,
     trim: true,
-    maxlength: 2000
-  },
-  category: {
-    type: String,
-    required: true,
-    enum: ['campus-events', 'tutoring', 'research', 'content-creation', 'technical', 'administrative', 'other'],
-    index: true
+    validate: {
+      validator: function(v) {
+        const words = v.trim().split(/\s+/).filter(word => word.length > 0);
+        return words.length >= 5;
+      },
+      message: 'Description must be at least 5 words'
+    }
   },
   location: {
     type: String,
     required: true,
     trim: true
   },
-  stipend: {
+  amount: {
     type: Number,
     required: true,
-    min: 0
+    min: 100
   },
   skillsRequired: [{
     type: String,
     trim: true
   }],
+  eventDate: {
+    type: Date,
+    required: true,
+    index: true
+  },
+  workHours: {
+    type: Number,
+    required: true,
+    min: 1,
+    max: 24
+  },
   deadline: {
     type: Date,
     required: true,
@@ -66,7 +77,6 @@ const jobSchema = new mongoose.Schema({
 // Indexes for better performance
 jobSchema.index({ isActive: 1, deadline: 1, createdAt: -1 });
 jobSchema.index({ organization: 1, createdAt: -1 });
-jobSchema.index({ category: 1, isActive: 1 });
 
 // Auto-deactivate jobs past deadline
 jobSchema.pre('find', function() {

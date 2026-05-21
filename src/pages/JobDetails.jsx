@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Container, Row, Col, Card, Button, Badge, Alert } from 'react-bootstrap';
 import { useParams, useNavigate } from 'react-router-dom';
 import { MapPin, Clock, DollarSign, Users, Building, ArrowLeft, Calendar } from 'lucide-react';
@@ -13,11 +13,7 @@ const JobDetails = () => {
   const [showApplicationModal, setShowApplicationModal] = useState(false);
   const [message, setMessage] = useState('');
 
-  useEffect(() => {
-    fetchJobDetails();
-  }, [id]);
-
-  const fetchJobDetails = async () => {
+  const fetchJobDetails = useCallback(async () => {
     try {
       const response = await api.get('/jobs');
       const jobData = response.data.find(j => j._id === id);
@@ -27,7 +23,11 @@ const JobDetails = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
+
+  useEffect(() => {
+    fetchJobDetails();
+  }, [fetchJobDetails]);
 
   const handleApply = () => {
     setShowApplicationModal(true);
@@ -39,11 +39,6 @@ const JobDetails = () => {
     setTimeout(() => setMessage(''), 3000);
   };
 
-  const formatCategory = (category) => {
-    return category.split('-').map(word => 
-      word.charAt(0).toUpperCase() + word.slice(1)
-    ).join(' ');
-  };
 
   if (loading) {
     return (
@@ -92,10 +87,9 @@ const JobDetails = () => {
               <div className="mb-4">
                 <h2 className="mb-3 text-primary">{job.title}</h2>
                 <div className="d-flex flex-wrap gap-2 mb-3">
-                  <Badge bg="info" className="px-3 py-2">{formatCategory(job.category)}</Badge>
                   <Badge bg="success" className="px-3 py-2">
                     <DollarSign size={14} className="me-1" />
-                    ₹{job.stipend}
+                    ₹{job.amount || job.stipend}
                   </Badge>
                   {isDeadlinePassed && (
                     <Badge bg="danger" className="px-3 py-2">Deadline Passed</Badge>
@@ -106,7 +100,7 @@ const JobDetails = () => {
               <div className="mb-4">
                 <h5 className="mb-3">Job Description</h5>
                 <div className="p-3 bg-light rounded">
-                  <p className="mb-0" style={{ whiteSpace: 'pre-wrap' }}>
+                  <p className="mb-0 fw-semibold text-primary">
                     {job.description}
                   </p>
                 </div>
@@ -137,7 +131,28 @@ const JobDetails = () => {
                 </Col>
                 <Col md={6}>
                   <div className="d-flex align-items-center mb-3 p-3 bg-light rounded">
-                    <Calendar size={24} className="me-3 text-primary" />
+                    <Calendar size={24} className="me-3 text-success" />
+                    <div>
+                      <strong>Event Date</strong><br />
+                      <span className="text-muted">{new Date(job.eventDate || job.deadline).toLocaleDateString()}</span>
+                    </div>
+                  </div>
+                </Col>
+              </Row>
+
+              <Row className="mb-4">
+                <Col md={6}>
+                  <div className="d-flex align-items-center mb-3 p-3 bg-light rounded">
+                    <Clock size={24} className="me-3 text-info" />
+                    <div>
+                      <strong>Working Hours</strong><br />
+                      <span className="text-muted">{job.workHours || 8} hours</span>
+                    </div>
+                  </div>
+                </Col>
+                <Col md={6}>
+                  <div className="d-flex align-items-center mb-3 p-3 bg-light rounded">
+                    <Calendar size={24} className="me-3 text-warning" />
                     <div>
                       <strong>Application Deadline</strong><br />
                       <span className="text-muted">{new Date(job.deadline).toLocaleDateString()}</span>

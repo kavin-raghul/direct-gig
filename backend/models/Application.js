@@ -23,7 +23,13 @@ const applicationSchema = new mongoose.Schema({
     type: String,
     required: true,
     trim: true,
-    maxlength: 1000
+    validate: {
+      validator: function(v) {
+        const words = v.trim().split(/\s+/).filter(word => word.length > 0);
+        return words.length >= 5;
+      },
+      message: 'Cover letter must be at least 5 words'
+    }
   },
   status: {
     type: String,

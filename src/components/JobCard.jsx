@@ -1,13 +1,8 @@
 import React from 'react';
-import { Card, Badge, Button, Row, Col } from 'react-bootstrap';
+import { Card, Badge, Button } from 'react-bootstrap';
 import { MapPin, Clock, DollarSign, Users, Calendar, CheckCircle } from 'lucide-react';
 
-const JobCard = ({ job, onApply, showApplyButton = true, onViewApplications, showManageButton = false, hasApplied = false }) => {
-  const formatCategory = (category) => {
-    return category.split('-').map(word => 
-      word.charAt(0).toUpperCase() + word.slice(1)
-    ).join(' ');
-  };
+const JobCard = ({ job, onApply, showApplyButton = true, onViewApplications, showManageButton = false, hasApplied = false, onOpenOrgPortfolio }) => {
 
   const isDeadlinePassed = new Date(job.deadline) < new Date();
 
@@ -18,13 +13,22 @@ const JobCard = ({ job, onApply, showApplyButton = true, onViewApplications, sho
           <div className="flex-grow-1">
             <Card.Title className="h5 mb-2 text-primary">{job.title}</Card.Title>
             <div className="d-flex flex-wrap gap-2 mb-2">
-              <Badge bg="info" className="px-2 py-1">
-                {formatCategory(job.category)}
-              </Badge>
               <Badge bg="success" className="px-2 py-1">
                 <DollarSign size={12} className="me-1" />
-                ₹{job.stipend}
+                ₹{job.amount || job.stipend}
               </Badge>
+              {job.matchScore !== undefined && job.matchScore !== null && (
+                <Badge 
+                  className="px-2 py-1 fw-bold"
+                  style={{
+                    backgroundColor: job.matchScore >= 80 ? 'rgba(46, 204, 113, 0.15)' : job.matchScore >= 50 ? 'rgba(243, 156, 18, 0.15)' : 'rgba(231, 76, 60, 0.15)',
+                    color: job.matchScore >= 80 ? '#2ecc71' : job.matchScore >= 50 ? '#f39c12' : '#e74c3c',
+                    border: job.matchScore >= 80 ? '1px solid rgba(46, 204, 113, 0.3)' : job.matchScore >= 50 ? '1px solid rgba(243, 156, 18, 0.3)' : '1px solid rgba(231, 76, 60, 0.3)'
+                  }}
+                >
+                  {job.matchScore}% Match
+                </Badge>
+              )}
               {hasApplied && (
                 <Badge bg="primary" className="px-2 py-1">
                   <CheckCircle size={12} className="me-1" />
@@ -36,10 +40,7 @@ const JobCard = ({ job, onApply, showApplyButton = true, onViewApplications, sho
         </div>
 
         <Card.Text className="text-muted mb-3">
-          {job.description.length > 120 
-            ? `${job.description.substring(0, 120)}...` 
-            : job.description
-          }
+          {job.description}
         </Card.Text>
 
         <div className="mb-3">
@@ -49,6 +50,14 @@ const JobCard = ({ job, onApply, showApplyButton = true, onViewApplications, sho
           </div>
           <div className="d-flex align-items-center text-muted mb-2">
             <Calendar size={16} className="me-2 text-primary" />
+            <small>Event Date: {new Date(job.eventDate || job.deadline).toLocaleDateString()}</small>
+          </div>
+          <div className="d-flex align-items-center text-muted mb-2">
+            <Clock size={16} className="me-2 text-primary" />
+            <small>Working Hours: {job.workHours || 8} hours</small>
+          </div>
+          <div className="d-flex align-items-center text-muted mb-2">
+            <Calendar size={16} className="me-2 text-warning" />
             <small>Deadline: {new Date(job.deadline).toLocaleDateString()}</small>
           </div>
           {showManageButton && (
@@ -75,7 +84,17 @@ const JobCard = ({ job, onApply, showApplyButton = true, onViewApplications, sho
         {job.organization && !showManageButton && (
           <div className="mb-3">
             <small className="text-muted">
-              <strong>Posted by:</strong> {job.organization.organizationName || job.organization.name}
+              <strong>Posted by:</strong>{' '}
+              <span 
+                className="text-primary fw-semibold text-decoration-underline" 
+                style={{ cursor: 'pointer' }}
+                onClick={() => onOpenOrgPortfolio && onOpenOrgPortfolio(job.organization._id || job.organization)}
+              >
+                {job.organization.organizationName || job.organization.name}
+              </span>
+              <span className="text-warning small ms-2 fw-semibold">
+                ⭐ {job.organization.averageRating > 0 ? job.organization.averageRating.toFixed(1) : 'N/A'} ({job.organization.ratingsCount || 0})
+              </span>
             </small>
           </div>
         )}
