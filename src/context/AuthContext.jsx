@@ -11,43 +11,76 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [token, setToken] = useState(() => localStorage.getItem("token"));
+  const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const storedUser = localStorage.getItem("user");
-    if (token && storedUser) {
+    const initializeAuth = async () => {
       try {
-        setUser(JSON.parse(storedUser));
-        api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-      } catch (err) {
-        console.error("Failed to parse stored user:", err);
-        localStorage.removeItem("user");
+        const storedToken = localStorage.getItem("token");
+        const storedUser = localStorage.getItem("user");
+
+        if (storedToken && storedUser) {
+          // Interceptor handles any 401s and attempts silent refresh in the background
+          const response = await api.get('/auth/profile');
+          if (response.data && response.data.user) {
+            setUser(response.data.user);
+            setToken(localStorage.getItem("token")); // Can be updated by interceptor during initial load
+            localStorage.setItem("user", JSON.stringify(response.data.user)); 
+          }
+        }
+      } catch (error) {
+        console.error("Auth validation failed:", error);
+        // Interceptor cleans up localStorage if refresh completely fails
+        if (!localStorage.getItem("token")) {
+          setUser(null);
+          setToken(null);
+        }
+      } finally {
+        setLoading(false);
       }
-    }
-    setLoading(false);
-  }, [token]);
+    };
+
+    initializeAuth();
+  }, []);
 
   const login = (userData, authToken) => {
-    console.log('Logging in user:', userData, 'Token:', authToken);
     setUser(userData);
     setToken(authToken);
     localStorage.setItem("token", authToken);
     localStorage.setItem("user", JSON.stringify(userData));
-    api.defaults.headers.common["Authorization"] = `Bearer ${authToken}`;
   };
 
-  const logout = () => {
-    setUser(null);
-    setToken(null);
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    delete api.defaults.headers.common["Authorization"];
+  const logout = async () => {
+    try {
+      // Hit backend to rotate out the refresh token from MongoDB and clear HttpOnly cookie
+      await api.post('/auth/logout');
+    } catch (err) {
+      console.error("Logout API failed, continuing client cleanup", err);
+    } finally {
+      setUser(null);
+      setToken(null);
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      window.location.href = '/login';
+    }
+  };
+
+  const refreshUser = async () => {
+    try {
+      const response = await api.get('/auth/profile');
+      if (response.data && response.data.user) {
+        setUser(response.data.user);
+        localStorage.setItem("user", JSON.stringify(response.data.user));
+      }
+    } catch (error) {
+      console.error("Failed to refresh user profile:", error);
+    }
   };
 
   return (
     <AuthContext.Provider value={{
-      user, token, login, logout, loading,
+      user, token, login, logout, loading, refreshUser,
       isAuthenticated: !!token,
       isStudent: user?.userType === "student",
       isOrganization: user?.userType === "organization",

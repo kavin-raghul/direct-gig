@@ -10,7 +10,7 @@ export const authenticateToken = async (req, res, next) => {
       return res.status(401).json({ message: 'Access token required' });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-this-in-production');
     const user = await User.findById(decoded.id).select('-password');
     
     if (!user) {
@@ -21,11 +21,11 @@ export const authenticateToken = async (req, res, next) => {
     next();
   } catch (error) {
     if (error.name === 'JsonWebTokenError') {
-      console.log(error.nam)
-      return res.status(403).json({ message: 'Invalid token format' });
+      console.log('JWT Error:', error.message);
+      return res.status(401).json({ message: 'Invalid token format' }); // Changed to 401
     }
     if (error.name === 'TokenExpiredError') {
-      return res.status(403).json({ message: 'Token expired' });
+      return res.status(401).json({ message: 'Token expired' }); // Changed to 401
     }
     return res.status(403).json({ message: 'Token verification failed' });
   }
@@ -54,7 +54,7 @@ export const optionalAuth = async (req, res, next) => {
     const token = authHeader && authHeader.split(' ')[1];
 
     if (token) {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-this-in-production');
       const user = await User.findById(decoded.id).select('-password');
       req.user = user;
     }

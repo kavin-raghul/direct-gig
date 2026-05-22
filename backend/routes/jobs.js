@@ -1,14 +1,14 @@
 import express from 'express';
 import { body, validationResult } from 'express-validator';
 import Job from '../models/Job.js';
-import { authenticateToken, requireRole } from '../middleware/auth.js';
+import { authenticateToken, requireRole, optionalAuth } from '../middleware/auth.js';
 
 const router = express.Router();
 
-// Get all active jobs (public route)
-router.get('/', async (req, res) => {
+// Get all active jobs (public route with optional auth for matching)
+router.get('/', optionalAuth, async (req, res) => {
   try {
-    const { category, location, search } = req.query;
+    const { location, search } = req.query;
     
     let query = { 
       isActive: true,
@@ -16,10 +16,6 @@ router.get('/', async (req, res) => {
     };
 
     // Apply filters
-    if (category) {
-      query.category = category;
-    }
-    
     if (location) {
       query.location = { $regex: location, $options: 'i' };
     }
@@ -33,11 +29,42 @@ router.get('/', async (req, res) => {
     }
 
     const jobs = await Job.find(query)
-      .populate('organization', 'organizationName name email')
+      .populate('organization', 'organizationName name email averageRating ratingsCount')
       .sort({ createdAt: -1 })
       .limit(50);
     
-    res.json(jobs);
+    // Calculate match score if the logged-in user is a student
+    let jobsWithMatchScore = jobs.map(job => {
+      const jobObj = job.toObject();
+      if (req.user && req.user.userType === 'student') {
+        const studentSkills = req.user.skills || [];
+        const jobSkills = job.skillsRequired || [];
+        
+        if (jobSkills.length === 0) {
+          jobObj.matchScore = 100;
+        } else {
+          const matchingSkills = jobSkills.filter(skill => 
+            studentSkills.some(s => s.toLowerCase() === skill.toLowerCase())
+          );
+          jobObj.matchScore = Math.round((matchingSkills.length / jobSkills.length) * 100);
+        }
+      } else {
+        jobObj.matchScore = null;
+      }
+      return jobObj;
+    });
+
+    // If student is logged-in, sort by match score descending, then by creation date
+    if (req.user && req.user.userType === 'student') {
+      jobsWithMatchScore.sort((a, b) => {
+        if (b.matchScore !== a.matchScore) {
+          return (b.matchScore || 0) - (a.matchScore || 0);
+        }
+        return new Date(b.createdAt) - new Date(a.createdAt);
+      });
+    }
+    
+    res.json(jobsWithMatchScore);
   } catch (error) {
     console.error('Error fetching jobs:', error);
     res.status(500).json({ message: 'Server error while fetching jobs' });
@@ -64,7 +91,7 @@ router.get('/:id', async (req, res) => {
       _id: req.params.id, 
       isActive: true,
       deadline: { $gte: new Date() }
-    }).populate('organization', 'organizationName name email');
+    }).populate('organization', 'organizationName name email averageRating ratingsCount');
     
     if (!job) {
       return res.status(404).json({ message: 'Job not found or no longer active' });
@@ -80,11 +107,12 @@ router.get('/:id', async (req, res) => {
 // Create new job
 router.post('/', authenticateToken, requireRole('organization'), [
   body('title').notEmpty().trim().isLength({ max: 200 }).withMessage('Title is required (max 200 characters)'),
-  body('description').notEmpty().trim().isLength({ min: 50, max: 2000 }).withMessage('Description must be 50-2000 characters'),
-  body('category').isIn(['campus-events', 'tutoring', 'research', 'content-creation', 'technical', 'administrative', 'other']).withMessage('Valid category is required'),
+  body('description').notEmpty().trim().withMessage('Description is required'),
   body('location').notEmpty().trim().withMessage('Location is required'),
-  body('stipend').isNumeric().isFloat({ min: 100 }).withMessage('Stipend must be at least ₹100'),
-  body('deadline').isISO8601().withMessage('Valid deadline date is required')
+  body('amount').isNumeric().isFloat({ min: 100 }).withMessage('Amount must be at least ₹100'),
+  body('deadline').isISO8601().withMessage('Valid deadline date is required'),
+  body('eventDate').isISO8601().withMessage('Valid event date is required'),
+  body('workHours').isInt({ min: 1, max: 24 }).withMessage('Work hours must be between 1-24')
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -95,25 +123,42 @@ router.post('/', authenticateToken, requireRole('organization'), [
       });
     }
 
-    const { deadline, ...jobData } = req.body;
+    const { deadline, eventDate, ...jobData } = req.body;
     
     // Validate deadline is in the future
     const deadlineDate = new Date(deadline);
+    const eventDateObj = new Date(eventDate);
+    
     if (deadlineDate <= new Date()) {
       return res.status(400).json({ message: 'Deadline must be in the future' });
+    }
+    
+    if (eventDateObj <= new Date()) {
+      return res.status(400).json({ message: 'Event date must be in the future' });
+    }
+    
+    if (deadlineDate >= eventDateObj) {
+      return res.status(400).json({ message: 'Deadline must be before event date' });
     }
 
     const job = new Job({
       ...jobData,
       deadline: deadlineDate,
+      eventDate: eventDateObj,
       organization: req.user._id,
-      stipend: parseFloat(jobData.stipend)
+      amount: parseFloat(jobData.amount)
     });
 
     await job.save();
 
     const populatedJob = await Job.findById(job._id)
-      .populate('organization', 'organizationName name email');
+      .populate('organization', 'organizationName name email averageRating ratingsCount');
+
+    // Broadcast the new job to all connected sockets in real-time
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('new_job', populatedJob);
+    }
 
     res.status(201).json({
       message: 'Job posted successfully',
@@ -128,9 +173,11 @@ router.post('/', authenticateToken, requireRole('organization'), [
 // Update job
 router.put('/:id', authenticateToken, requireRole('organization'), [
   body('title').optional().notEmpty().trim().isLength({ max: 200 }),
-  body('description').optional().notEmpty().trim().isLength({ min: 50, max: 2000 }),
-  body('stipend').optional().isNumeric().isFloat({ min: 100 }),
-  body('deadline').optional().isISO8601()
+  body('description').optional().notEmpty().trim(),
+  body('amount').optional().isNumeric().isFloat({ min: 100 }),
+  body('deadline').optional().isISO8601(),
+  body('eventDate').optional().isISO8601(),
+  body('workHours').optional().isInt({ min: 1, max: 24 })
 ], async (req, res) => {
   try {
     const errors = validationResult(req);

@@ -9,7 +9,7 @@ const router = express.Router();
 // Apply for a job (students only)
 router.post('/', authenticateToken, requireRole('student'), [
   body('jobId').isMongoId().withMessage('Valid job ID is required'),
-  body('coverLetter').isLength({ min: 50, max: 1000 }).trim().withMessage('Cover letter must be 50-1000 characters')
+  body('coverLetter').notEmpty().trim().withMessage('Cover letter is required')
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -21,6 +21,12 @@ router.post('/', authenticateToken, requireRole('student'), [
     }
 
     const { jobId, coverLetter } = req.body;
+
+    // Validate cover letter has at least 5 words
+    const words = coverLetter.trim().split(/\s+/).filter(word => word.length > 0);
+    if (words.length < 5) {
+      return res.status(400).json({ message: 'Cover letter must be at least 5 words' });
+    }
 
     // Check if job exists and is active
     const job = await Job.findOne({ 
@@ -62,6 +68,13 @@ router.post('/', authenticateToken, requireRole('student'), [
     job.applicationsCount += 1;
     await job.save();
 
+    // Push real-time notification to the organization socket room
+    const io = req.app.get('io');
+    if (io) {
+      const populatedApp = await Application.findById(application._id).populate('student', 'name email university course year skills phone averageRating ratingsCount');
+      io.to(`user_${job.organization._id}`).emit('new_application', populatedApp);
+    }
+
     res.status(201).json({
       message: 'Application submitted successfully',
       application
@@ -86,10 +99,31 @@ router.get('/job/:jobId', authenticateToken, requireRole('organization'), async 
     }
 
     const applications = await Application.find({ job: req.params.jobId })
-      .populate('student', 'name email university course year skills phone')
+      .populate('student', 'name email university course year skills phone averageRating ratingsCount')
       .sort({ appliedAt: -1 });
 
-    res.json(applications);
+    // Calculate match score for each applicant
+    const applicationsWithScore = applications.map(app => {
+      const appObj = app.toObject();
+      if (appObj.student) {
+        const studentSkills = appObj.student.skills || [];
+        const jobSkills = job.skillsRequired || [];
+        
+        if (jobSkills.length === 0) {
+          appObj.matchScore = 100;
+        } else {
+          const matchingSkills = jobSkills.filter(skill => 
+            studentSkills.some(s => s.toLowerCase() === skill.toLowerCase())
+          );
+          appObj.matchScore = Math.round((matchingSkills.length / jobSkills.length) * 100);
+        }
+      } else {
+        appObj.matchScore = null;
+      }
+      return appObj;
+    });
+
+    res.json(applicationsWithScore);
   } catch (error) {
     console.error('Error fetching job applications:', error);
     res.status(500).json({ message: 'Server error while fetching applications' });
@@ -102,10 +136,10 @@ router.get('/my-applications', authenticateToken, requireRole('student'), async 
     const applications = await Application.find({ student: req.user._id })
       .populate({
         path: 'job',
-        select: 'title category location stipend deadline organization',
+        select: 'title location amount deadline organization',
         populate: {
           path: 'organization',
-          select: 'organizationName name'
+          select: 'organizationName name averageRating ratingsCount'
         }
       })
       .sort({ appliedAt: -1 });
@@ -146,6 +180,17 @@ router.patch('/:id/status', authenticateToken, requireRole('organization'), [
 
     application.status = status;
     await application.save();
+
+    // Push real-time notification to the student socket room
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`user_${application.student}`).emit('application_status_updated', {
+        applicationId: application._id,
+        status: application.status,
+        jobTitle: application.job.title,
+        updatedAt: application.updatedAt
+      });
+    }
 
     res.json({ 
       message: `Application ${status} successfully`, 

@@ -4,9 +4,14 @@ import { useForm } from 'react-hook-form';
 import api from '../services/api';
 
 const JobPostingForm = ({ show, onHide, onJobCreated }) => {
-  const { register, handleSubmit, formState: { errors }, reset } = useForm();
+  const { register, handleSubmit, formState: { errors }, reset, watch } = useForm();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  
+  const description = watch('description', '');
+  const wordCount = description.trim().split(/\s+/).filter(word => word.length > 0).length;
+
 
   const onSubmit = async (data) => {
     setLoading(true);
@@ -15,15 +20,23 @@ const JobPostingForm = ({ show, onHide, onJobCreated }) => {
     try {
       const jobData = {
         ...data,
-        stipend: parseFloat(data.stipend),
+        amount: parseFloat(data.stipend),
         skillsRequired: data.skillsRequired ? data.skillsRequired.split(',').map(skill => skill.trim()) : [],
-        deadline: new Date(data.deadline).toISOString()
+        deadline: new Date(data.deadline).toISOString(),
+        eventDate: new Date(data.eventDate).toISOString(),
+        workHours: parseInt(data.workHours)
       };
 
       const response = await api.post('/jobs', jobData);
       onJobCreated(response.data.job);
+      setSuccess('Job posted successfully!');
       reset();
-      onHide();
+      
+      // Auto-close after 2 seconds
+      setTimeout(() => {
+        onHide();
+        setSuccess('');
+      }, 2000);
     } catch (error) {
       setError(error.response?.data?.message || 'Failed to create job');
     } finally {
@@ -39,6 +52,7 @@ const JobPostingForm = ({ show, onHide, onJobCreated }) => {
       <Modal.Body className="pt-0">
         <Form onSubmit={handleSubmit(onSubmit)}>
           {error && <Alert variant="danger">{error}</Alert>}
+          {success && <Alert variant="success">{success}</Alert>}
         
           
           <Form.Group className="mb-3">
@@ -46,7 +60,7 @@ const JobPostingForm = ({ show, onHide, onJobCreated }) => {
             <Form.Control
               type="text"
               size="lg"
-              placeholder="e.g., Campus Event Assistant, Research Helper"
+              placeholder="Enter the title"
               {...register('title', { required: 'Job title is required' })}
               isInvalid={!!errors.title}
             />
@@ -55,37 +69,21 @@ const JobPostingForm = ({ show, onHide, onJobCreated }) => {
             </Form.Control.Feedback>
           </Form.Group>
 
-          <Form.Group className="mb-3">
-            <Form.Label>Category *</Form.Label>
-            <Form.Select
-              size="lg"
-              {...register('category', { required: 'Category is required' })}
-              isInvalid={!!errors.category}
-            >
-              <option value="">Select Category</option>
-              <option value="Catering-service">Catering Service</option>
-              <option value="Weight-Lifting">Weight Lifting</option>
-              <option value="Security">Security</option>
-              <option value="Data-Entry">Data Entry</option>
-              <option value="technical">Technical Support</option>
-              <option value="other">Other</option>
-            </Form.Select>
-            <Form.Control.Feedback type="invalid">
-              {errors.category?.message}
-            </Form.Control.Feedback>
-          </Form.Group>
 
           <Form.Group className="mb-3">
             <Form.Label>Job Description *</Form.Label>
             <Form.Control
               as="textarea"
-              rows={4}
-              placeholder="Provide detailed description of the job, responsibilities, and expectations..."
+              rows={2}
+              placeholder="Enter at least 5 words describing the job..."
               {...register('description', { 
                 required: 'Description is required',
-                minLength: {
-                  value: 50,
-                  message: 'Description must be at least 50 characters'
+                validate: value => {
+                  const words = value.trim().split(/\s+/).filter(word => word.length > 0);
+                  if (words.length < 5) {
+                    return 'Description must be at least 5 words';
+                  }
+                  return true;
                 }
               })}
               isInvalid={!!errors.description}
@@ -93,6 +91,9 @@ const JobPostingForm = ({ show, onHide, onJobCreated }) => {
             <Form.Control.Feedback type="invalid">
               {errors.description?.message}
             </Form.Control.Feedback>
+            <Form.Text className={`text-muted ${wordCount >= 5 ? 'text-success' : 'text-warning'}`}>
+              Must be at least 5 words (current: {wordCount}/5)
+            </Form.Text>
           </Form.Group>
 
           <Row>
@@ -134,6 +135,52 @@ const JobPostingForm = ({ show, onHide, onJobCreated }) => {
             </Col>
           </Row>
 
+          <Row>
+            <Col md={6}>
+              <Form.Group className="mb-3">
+                <Form.Label>Event Date *</Form.Label>
+                <Form.Control
+                  type="date"
+                  min={new Date().toISOString().split('T')[0]}
+                  {...register('eventDate', { 
+                    required: 'Event date is required',
+                    validate: value => new Date(value) > new Date() || 'Event date must be in the future'
+                  })}
+                  isInvalid={!!errors.eventDate}
+                />
+                <Form.Control.Feedback type="invalid">
+                  {errors.eventDate?.message}
+                </Form.Control.Feedback>
+              </Form.Group>
+            </Col>
+            <Col md={6}>
+              <Form.Group className="mb-3">
+                <Form.Label>Working Hours *</Form.Label>
+                <Form.Control
+                  type="number"
+                  min="1"
+                  max="24"
+                  placeholder="e.g., 8"
+                  {...register('workHours', { 
+                    required: 'Working hours is required',
+                    min: {
+                      value: 1,
+                      message: 'Must be at least 1 hour'
+                    },
+                    max: {
+                      value: 24,
+                      message: 'Cannot exceed 24 hours'
+                    }
+                  })}
+                  isInvalid={!!errors.workHours}
+                />
+                <Form.Control.Feedback type="invalid">
+                  {errors.workHours?.message}
+                </Form.Control.Feedback>
+              </Form.Group>
+            </Col>
+          </Row>
+
           <Form.Group className="mb-3">
             <Form.Label>Application Deadline *</Form.Label>
             <Form.Control
@@ -141,13 +188,28 @@ const JobPostingForm = ({ show, onHide, onJobCreated }) => {
               min={new Date().toISOString().split('T')[0]}
               {...register('deadline', { 
                 required: 'Deadline is required',
-                validate: value => new Date(value) > new Date() || 'Deadline must be in the future'
+                validate: value => {
+                  const deadline = new Date(value);
+                  const today = new Date();
+                  const eventDate = new Date(document.querySelector('input[name="eventDate"]')?.value);
+                  
+                  if (deadline <= today) {
+                    return 'Deadline must be in the future';
+                  }
+                  if (eventDate && deadline >= eventDate) {
+                    return 'Deadline must be before the event date';
+                  }
+                  return true;
+                }
               })}
               isInvalid={!!errors.deadline}
             />
             <Form.Control.Feedback type="invalid">
               {errors.deadline?.message}
             </Form.Control.Feedback>
+            <Form.Text className="text-muted">
+              Deadline must be before the event date
+            </Form.Text>
           </Form.Group>
 
           <Form.Group className="mb-4">
@@ -166,12 +228,12 @@ const JobPostingForm = ({ show, onHide, onJobCreated }) => {
               Cancel
             </Button>
             <Button 
-              variant="primary" 
+              variant={success ? "success" : "primary"} 
               type="submit" 
               className="flex-fill py-2 fw-semibold"
-              disabled={loading}
+              disabled={loading || success}
             >
-              {loading ? 'Posting...' : 'Post Job'}
+              {loading ? 'Posting...' : success ? 'Posted Successfully!' : 'Post Job'}
             </Button>
           </div>
         </Form>
