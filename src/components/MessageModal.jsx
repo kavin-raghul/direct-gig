@@ -20,10 +20,10 @@ const MessageModal = ({ show, onHide, application, currentUser }) => {
   };
 
   useEffect(() => {
-    if (show && application) {
-      fetchMessages();
-    }
-  }, [show, application]);
+  if (show && application) {
+    fetchMessages();
+  }
+}, [show, application, fetchMessages]);
 
   useEffect(() => {
     scrollToBottom();
