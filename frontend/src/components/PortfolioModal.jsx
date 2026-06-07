@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Modal, Row, Col, Badge, Card, Spinner, Alert } from 'react-bootstrap';
-import { User, Building, Star, Award, BookOpen, Mail, Phone, Calendar } from 'lucide-react';
+import { User, Building, Star, Award, BookOpen, Mail, Phone } from 'lucide-react';
 import api from '../services/api';
 
 const PortfolioModal = ({ show, onHide, userId }) => {
@@ -9,20 +9,10 @@ const PortfolioModal = ({ show, onHide, userId }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    if (show && userId) {
-      fetchPortfolioData();
-    } else if (!show) {
-      setProfile(null);
-      setReviews([]);
-      setError('');
-    }
-  }, [show, userId]);
-
-  const fetchPortfolioData = async () => {
+  const fetchPortfolioData = useCallback(async () => {
     setLoading(true);
     setError('');
-    
+
     // Safely extract string ID if userId is passed as an object
     const targetUserId = typeof userId === 'object' && userId !== null ? (userId._id || userId.id) : userId;
     if (!targetUserId) {
@@ -45,7 +35,17 @@ const PortfolioModal = ({ show, onHide, userId }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [userId]);
+
+  useEffect(() => {
+    if (show && userId) {
+      fetchPortfolioData();
+    } else if (!show) {
+      setProfile(null);
+      setReviews([]);
+      setError('');
+    }
+  }, [show, userId, fetchPortfolioData]);
 
   const renderStars = (rating) => {
     const stars = [];
@@ -105,7 +105,7 @@ const PortfolioModal = ({ show, onHide, userId }) => {
                         {profile.userType}
                       </Badge>
                     </div>
-                    
+
                     {/* Rating display */}
                     <div className="d-flex align-items-center gap-2 mt-1">
                       <div className="d-flex align-items-center text-warning fw-semibold">

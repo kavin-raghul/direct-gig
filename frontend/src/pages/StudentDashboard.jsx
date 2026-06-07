@@ -59,7 +59,7 @@ const StudentDashboard = () => {
     fetchApplications();
     fetchUnreadCount();
     if (refreshUser) refreshUser();
-  }, []);
+  }, [refreshUser]);
 
   useEffect(() => {
     const handleUnreadUpdate = () => {
@@ -80,12 +80,12 @@ const StudentDashboard = () => {
       console.log('Application status update received in real-time!', data);
       setMessage(`Application status updated to "${data.status.toUpperCase()}" for job: ${data.jobTitle}!`);
       setTimeout(() => setMessage(''), 6000);
-      
+
       // Update applications state in real-time
-      setApplications(prev => 
-        prev.map(app => 
-          app._id === data.applicationId 
-            ? { ...app, status: data.status, updatedAt: data.updatedAt } 
+      setApplications(prev =>
+        prev.map(app =>
+          app._id === data.applicationId
+            ? { ...app, status: data.status, updatedAt: data.updatedAt }
             : app
         )
       );
@@ -358,8 +358,8 @@ const StudentDashboard = () => {
                       <div className="mb-3">
                         <p className="text-muted mb-1">
                           <strong>Organization:</strong>{' '}
-                          <span 
-                            className="text-primary fw-semibold text-decoration-underline" 
+                          <span
+                            className="text-primary fw-semibold text-decoration-underline"
                             style={{ cursor: 'pointer' }}
                             onClick={() => handleOpenPortfolioModal(application.job?.organization?._id || application.job?.organization)}
                           >
@@ -400,7 +400,7 @@ const StudentDashboard = () => {
                               <span className="text-muted">1. Candidate Selected</span>
                               <span className="text-success fw-bold">✓ Complete</span>
                             </div>
-                            
+
                             <div className="d-flex align-items-center justify-content-between">
                               <span className="text-muted">2. Escrow Deposit</span>
                               {(!escrowStatuses[application._id] || escrowStatuses[application._id].status === 'none' || escrowStatuses[application._id].status === 'pending_deposit') ? (
@@ -421,20 +421,20 @@ const StudentDashboard = () => {
                           </div>
 
                           <div className="d-flex gap-2">
-                            <Button 
-                              variant="outline-primary" 
-                              size="sm" 
+                            <Button
+                              variant="outline-primary"
+                              size="sm"
                               className="flex-grow-1 d-flex align-items-center justify-content-center py-2"
                               onClick={() => handleSelectConversation({ application })}
                             >
                               <MessageCircle size={16} className="me-2" />
                               Chat
                             </Button>
-                            
+
                             {escrowStatuses[application._id]?.status === 'completed' && (
-                              <Button 
-                                variant="primary" 
-                                size="sm" 
+                              <Button
+                                variant="primary"
+                                size="sm"
                                 className="flex-grow-1 py-2 fw-semibold"
                                 onClick={() => handleOpenReviewModal(application._id)}
                               >

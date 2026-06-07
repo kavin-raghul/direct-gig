@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Modal, Form, Button, Alert, Row, Col, Card, Badge } from 'react-bootstrap';
 import { Send, MessageCircle, User, Building } from 'lucide-react';
 import { io } from 'socket.io-client';
@@ -19,11 +19,29 @@ const MessageModal = ({ show, onHide, application, currentUser }) => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  const fetchMessages = useCallback(async () => {
+    if (!application?._id) return;
+    setLoading(true);
+    try {
+      const response = await api.get(`/messages/application/${application._id}`);
+      setMessages(response.data);
+      
+      // Mark messages as read
+      await api.patch('/messages/mark-read', { applicationId: application._id });
+      window.dispatchEvent(new CustomEvent('unread-count-updated'));
+    } catch (error) {
+      console.error('Error fetching messages:', error);
+      setError('Failed to load messages');
+    } finally {
+      setLoading(false);
+    }
+  }, [application?._id]);
+
   useEffect(() => {
-  if (show && application) {
-    fetchMessages();
-  }
-}, [show, application, fetchMessages]);
+    if (show && application) {
+      fetchMessages();
+    }
+  }, [show, application, fetchMessages]);
 
   useEffect(() => {
     scrollToBottom();
@@ -65,23 +83,6 @@ const MessageModal = ({ show, onHide, application, currentUser }) => {
       socket.disconnect();
     };
   }, [show, application, currentUserId]);
-
-  const fetchMessages = async () => {
-    setLoading(true);
-    try {
-      const response = await api.get(`/messages/application/${application._id}`);
-      setMessages(response.data);
-      
-      // Mark messages as read
-      await api.patch('/messages/mark-read', { applicationId: application._id });
-      window.dispatchEvent(new CustomEvent('unread-count-updated'));
-    } catch (error) {
-      console.error('Error fetching messages:', error);
-      setError('Failed to load messages');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const sendMessage = async (e) => {
     e.preventDefault();

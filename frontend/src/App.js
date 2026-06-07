@@ -11,7 +11,6 @@ import OrganizationDashboard from './pages/OrganizationDashboard';
 import JobDetails from './pages/JobDetails';
 import MockCheckout from './pages/MockCheckout';
 import ProtectedRoute from './components/ProtectedRoute';
-import LoginRedirect from './components/LoginRedirect';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import 'bootstrap/dist/css/bootstrap.min.css';
@@ -31,37 +30,37 @@ function App() {
               <Route path="/organization/auth" element={<OrganizationAuth />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/reset-password/:token" element={<ResetPassword />} />
-              <Route 
-                path="/student/dashboard" 
+              <Route
+                path="/student/dashboard"
                 element={
                   <ProtectedRoute userType="student">
                     <StudentDashboard />
                   </ProtectedRoute>
-                } 
+                }
               />
-              <Route 
-                path="/organization/dashboard" 
+              <Route
+                path="/organization/dashboard"
                 element={
                   <ProtectedRoute userType="organization">
                     <OrganizationDashboard />
                   </ProtectedRoute>
-                } 
+                }
               />
-              <Route 
-                path="/mock-checkout" 
+              <Route
+                path="/mock-checkout"
                 element={
                   <ProtectedRoute userType="organization">
                     <MockCheckout />
                   </ProtectedRoute>
-                } 
+                }
               />
-              <Route 
-                path="/job/:id" 
+              <Route
+                path="/job/:id"
                 element={
                   <ProtectedRoute userType="student">
                     <JobDetails />
                   </ProtectedRoute>
-                } 
+                }
               />
               {/* Catch-all route for undefined paths */}
               <Route path="*" element={<Navigate to="/" replace />} />

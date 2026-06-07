@@ -9,7 +9,7 @@ import PortfolioModal from '../components/PortfolioModal';
 import ReviewModal from '../components/ReviewModal';
 import api from '../services/api';
 import { io } from 'socket.io-client';
-import { Plus, Briefcase, FileText, Building,  MessageCircle } from 'lucide-react';
+import { Plus, Briefcase, FileText, Building, MessageCircle } from 'lucide-react';
 
 const SOCKET_URL = window.location.hostname === 'localhost' ? 'http://localhost:5000' : 'https://direct-gig.onrender.com';
 
@@ -42,7 +42,7 @@ const OrganizationDashboard = () => {
     setSelectedApplicationIdForReview(applicationId);
     setShowReviewModal(true);
   };
-  
+
   const selectedJobRef = useRef(null);
 
   const fetchUnreadCount = async () => {
@@ -80,7 +80,7 @@ const OrganizationDashboard = () => {
 
     socket.on('new_application', (application) => {
       console.log('Real-time application received!', application);
-      
+
       // Notify the organization via banner
       setMessage(`New application from ${application.student.name}!`);
       setTimeout(() => setMessage(''), 6000);
@@ -193,7 +193,7 @@ const OrganizationDashboard = () => {
   const handleReleaseEscrow = async (escrowId, jobId) => {
     try {
       setMessage('Releasing escrow funds to student...');
-      const response = await api.post('/payments/release-escrow', { escrowId });
+      // const response = await api.post('/payments/release-escrow', { escrowId });
       setMessage('Funds released from escrow successfully!');
       setTimeout(() => setMessage(''), 3000);
       await fetchApplications(jobId);
@@ -280,8 +280,8 @@ const OrganizationDashboard = () => {
 
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h4 className="mb-0">Job Management</h4>
-        <Button 
-          variant="primary" 
+        <Button
+          variant="primary"
           size="lg"
           onClick={() => setShowJobForm(true)}
           className="px-4"
@@ -314,8 +314,8 @@ const OrganizationDashboard = () => {
             ) : (
               jobs.map((job) => (
                 <Col lg={6} key={job._id} className="mb-4">
-                  <JobCard 
-                    job={job} 
+                  <JobCard
+                    job={job}
                     showApplyButton={false}
                     showManageButton={true}
                     onViewApplications={handleViewApplications}
@@ -325,7 +325,7 @@ const OrganizationDashboard = () => {
             )}
           </Row>
         </Tab>
-        
+
         <Tab eventKey="messages" title={
           <span className="d-flex align-items-center">
             <MessageCircle className="me-2" size={16} />
@@ -371,18 +371,18 @@ const OrganizationDashboard = () => {
                     <Col md={8}>
                       <div className="d-flex align-items-center mb-3">
                         <div className="bg-primary bg-opacity-10 rounded-circle p-2 me-3">
-                       
+
                         </div>
                         <div>
-                          <h6 
-                            className="mb-0 fw-bold text-primary text-decoration-underline" 
+                          <h6
+                            className="mb-0 fw-bold text-primary text-decoration-underline"
                             style={{ cursor: 'pointer' }}
                             onClick={() => handleOpenPortfolioModal(application.student._id || application.student)}
                           >
                             {application.student.name}
                           </h6>
                           {application.matchScore !== undefined && application.matchScore !== null && (
-                            <Badge 
+                            <Badge
                               className="px-2 py-0.5 mt-1 fw-bold d-inline-block"
                               style={{
                                 fontSize: '10px',
@@ -397,7 +397,7 @@ const OrganizationDashboard = () => {
                           <div className="text-muted small mt-1">{application.student.email}</div>
                         </div>
                       </div>
-                      
+
                       <div className="mb-3">
                         <p className="text-muted mb-1">
                           <strong>University:</strong> {application.student.university}
@@ -410,7 +410,7 @@ const OrganizationDashboard = () => {
                         </p>
                         {application.student.skills?.length > 0 && (
                           <p className="mb-2">
-                            <strong>Skills:</strong> 
+                            <strong>Skills:</strong>
                             <div className="mt-1">
                               {application.student.skills.map((skill, index) => (
                                 <Badge key={index} bg="secondary" className="me-1 mb-1">
@@ -421,14 +421,14 @@ const OrganizationDashboard = () => {
                           </p>
                         )}
                       </div>
-                      
+
                       <div className="mb-3">
                         <strong>Cover Letter:</strong>
                         <div className="mt-2 p-3 bg-light rounded">
                           <p className="mb-0 text-muted">{application.coverLetter}</p>
                         </div>
                       </div>
-                      
+
                       <small className="text-muted">
                         Applied: {new Date(application.appliedAt).toLocaleString()}
                       </small>
@@ -439,15 +439,15 @@ const OrganizationDashboard = () => {
                       </Badge>
                       {application.status === 'pending' && (
                         <div className="d-grid gap-2">
-                          <Button 
-                            variant="success" 
+                          <Button
+                            variant="success"
                             size="sm"
                             onClick={() => handleStatusUpdate(application._id, 'accepted')}
                           >
                             Accept Application
                           </Button>
-                          <Button 
-                            variant="danger" 
+                          <Button
+                            variant="danger"
                             size="sm"
                             onClick={() => handleStatusUpdate(application._id, 'rejected')}
                           >
@@ -457,8 +457,8 @@ const OrganizationDashboard = () => {
                       )}
                       {application.status === 'accepted' && (
                         <div className="d-grid gap-2">
-                          <Button 
-                            variant="outline-primary" 
+                          <Button
+                            variant="outline-primary"
                             size="sm"
                             className="d-flex align-items-center justify-content-center mb-2"
                             onClick={() => {
@@ -479,9 +479,9 @@ const OrganizationDashboard = () => {
                             {(!escrowStatuses[application._id] || escrowStatuses[application._id].status === 'none') ? (
                               <div>
                                 <p className="mb-2 text-muted">Deposited stipend will be held in escrow until release.</p>
-                                <Button 
-                                  variant="success" 
-                                  size="sm" 
+                                <Button
+                                  variant="success"
+                                  size="sm"
                                   className="w-100 fw-bold"
                                   onClick={() => handleInitiatePayment(application._id)}
                                 >
@@ -491,9 +491,9 @@ const OrganizationDashboard = () => {
                             ) : escrowStatuses[application._id].status === 'pending_deposit' ? (
                               <div>
                                 <p className="mb-2 text-warning fw-semibold">🔒 Deposit pending...</p>
-                                <Button 
-                                  variant="success" 
-                                  size="sm" 
+                                <Button
+                                  variant="success"
+                                  size="sm"
                                   className="w-100 fw-bold"
                                   onClick={() => handleInitiatePayment(application._id)}
                                 >
@@ -503,9 +503,9 @@ const OrganizationDashboard = () => {
                             ) : escrowStatuses[application._id].status === 'deposited' ? (
                               <div>
                                 <p className="mb-2 text-success fw-bold">🔒 Secured in Escrow (₹{escrowStatuses[application._id].amount})</p>
-                                <Button 
-                                  variant="primary" 
-                                  size="sm" 
+                                <Button
+                                  variant="primary"
+                                  size="sm"
                                   className="w-100 fw-bold"
                                   onClick={() => handleReleaseEscrow(escrowStatuses[application._id]._id, selectedJob._id)}
                                 >
@@ -515,9 +515,9 @@ const OrganizationDashboard = () => {
                             ) : escrowStatuses[application._id].status === 'completed' ? (
                               <div>
                                 <p className="mb-2 text-success fw-bold">💸 Paid & Completed</p>
-                                <Button 
-                                  variant="outline-secondary" 
-                                  size="sm" 
+                                <Button
+                                  variant="outline-secondary"
+                                  size="sm"
                                   className="w-100 fw-bold"
                                   onClick={() => handleOpenReviewModal(application._id)}
                                 >

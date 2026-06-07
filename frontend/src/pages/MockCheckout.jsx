@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Container, Row, Col, Card, Form, Button, Alert, Spinner, Badge } from 'react-bootstrap';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { ShieldCheck, CreditCard, Lock, ArrowLeft, CheckCircle } from 'lucide-react';
@@ -22,16 +22,7 @@ const MockCheckout = () => {
   const [cvv, setCvv] = useState('424');
   const [cardName, setCardName] = useState('');
 
-  useEffect(() => {
-    if (!escrowId || !appId) {
-      setError('Missing payment identifiers. Please try initiating checkout from the dashboard again.');
-      setLoading(false);
-      return;
-    }
-    fetchEscrowDetails();
-  }, [escrowId, appId]);
-
-  const fetchEscrowDetails = async () => {
+  const fetchEscrowDetails = useCallback(async () => {
     try {
       const response = await api.get(`/payments/status/${appId}`);
       if (response.data.status === 'none') {
@@ -48,7 +39,19 @@ const MockCheckout = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [appId]);
+
+  useEffect(() => {
+    if (!escrowId || !appId) {
+      setError(
+        'Missing payment identifiers. Please try initiating checkout from the dashboard again.'
+      );
+      setLoading(false);
+      return;
+    }
+
+    fetchEscrowDetails();
+  }, [escrowId, appId, fetchEscrowDetails]);
 
   const handlePay = async (e) => {
     e.preventDefault();
