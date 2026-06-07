@@ -64,7 +64,7 @@ const MockCheckout = () => {
     setError('');
 
     try {
-      const response = await api.post('/payments/mock-confirm', { escrowId });
+      await api.post('/payments/mock-confirm', { escrowId });
       setSuccess(true);
       setTimeout(() => {
         navigate(`/organization/dashboard?escrow_success=true&appId=${appId}`);

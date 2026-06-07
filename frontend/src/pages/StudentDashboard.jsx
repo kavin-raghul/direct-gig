@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Container, Row, Col, Card, Button, Badge, Tab, Tabs, Alert, Form, InputGroup } from 'react-bootstrap';
 import { useAuth } from '../context/AuthContext';
 import JobCard from '../components/JobCard';
@@ -115,9 +115,31 @@ const StudentDashboard = () => {
     };
   }, [user]);
 
+  const filterJobs = useCallback(() => {
+    let filtered = jobs;
+
+    if (searchTerm) {
+      filtered = filtered.filter(job =>
+        job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        job.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        job.skillsRequired?.some(skill =>
+          skill.toLowerCase().includes(searchTerm.toLowerCase())
+        )
+      );
+    }
+
+    if (locationFilter) {
+      filtered = filtered.filter(job =>
+        job.location.toLowerCase().includes(locationFilter.toLowerCase())
+      );
+    }
+
+    setFilteredJobs(filtered);
+  }, [jobs, searchTerm, locationFilter]);
+
   useEffect(() => {
     filterJobs();
-  }, [jobs, searchTerm, locationFilter]);
+  }, [filterJobs]);
 
   const fetchJobs = async () => {
     try {
@@ -150,28 +172,6 @@ const StudentDashboard = () => {
     } catch (error) {
       console.error('Error fetching applications:', error);
     }
-  };
-
-  const filterJobs = () => {
-    let filtered = jobs;
-
-    if (searchTerm) {
-      filtered = filtered.filter(job =>
-        job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        job.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        job.skillsRequired?.some(skill =>
-          skill.toLowerCase().includes(searchTerm.toLowerCase())
-        )
-      );
-    }
-
-    if (locationFilter) {
-      filtered = filtered.filter(job =>
-        job.location.toLowerCase().includes(locationFilter.toLowerCase())
-      );
-    }
-
-    setFilteredJobs(filtered);
   };
 
   const handleApply = (job) => {

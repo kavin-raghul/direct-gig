@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Modal, Form, Button, Alert, Row, Col } from 'react-bootstrap';
+import { Modal, Form, Button, Alert } from 'react-bootstrap';
 import { Star, Award } from 'lucide-react';
 import api from '../services/api';
 
@@ -27,7 +27,7 @@ const ReviewModal = ({ show, onHide, applicationId, onReviewSuccess }) => {
     setSuccess('');
 
     try {
-      const response = await api.post('/reviews', {
+      await api.post('/reviews', {
         applicationId,
         rating,
         comment: comment.trim()
