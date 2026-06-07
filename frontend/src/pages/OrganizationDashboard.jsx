@@ -193,7 +193,7 @@ const OrganizationDashboard = () => {
   const handleReleaseEscrow = async (escrowId, jobId) => {
     try {
       setMessage('Releasing escrow funds to student...');
-      // const response = await api.post('/payments/release-escrow', { escrowId });
+      await api.post('/payments/release-escrow', { escrowId });
       setMessage('Funds released from escrow successfully!');
       setTimeout(() => setMessage(''), 3000);
       await fetchApplications(jobId);
